@@ -22,37 +22,109 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# ESTILIZAÇÃO CSS CUSTOMIZADA (TELA DE LOGIN E DESIGN PREMIUM)
+# PALETA DE CORES E DESIGN SYSTEM (TECNOLÓGICO / CYBERPUNK SÓBRIO)
 # -----------------------------------------------------------------------------
-st.markdown("""
+PALETA = {
+    "fundo_principal":  "#0A0E17",   # preto tecnológico
+    "fundo_secundario": "#111827",   # cinza-azulado escuro
+    "fundo_card":       "#161B22",   # painel dos cards
+    "borda":            "#1F2937",   # borda fina dos painéis
+    "acento_ciano":     "#00E5FF",   # cor principal (números, títulos)
+    "acento_neon":      "#39FF14",   # destaque positivo
+    "acento_roxo":      "#7C3AED",   # secundário / hover
+    "acento_vermelho":  "#FF3B5C",   # alertas
+    "texto_principal":  "#E6EDF3",   # texto claro (nunca branco puro)
+    "texto_secundario": "#8B949E",   # legendas
+}
+
+# -----------------------------------------------------------------------------
+# ESTILIZAÇÃO CSS CUSTOMIZADA & APLICAÇÃO VISUAL [VISUAL]
+# -----------------------------------------------------------------------------
+st.markdown(f"""
 <style>
-    .login-container {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    /* Fundo geral da aplicação */
+    .stApp {{
+        background-color: {PALETA["fundo_principal"]};
+        color: {PALETA["texto_principal"]};
+        font-family: 'Segoe UI', 'Inter', sans-serif;
+    }}
+
+    /* Container de Login */
+    .login-container {{
+        background: linear-gradient(135deg, {PALETA["fundo_secundario"]} 0%, {PALETA["fundo_card"]} 100%);
         padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        color: #f8fafc;
-        border: 1px solid #334155;
-    }
-    .login-title {
-        font-size: 28px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        color: {PALETA["texto_principal"]};
+        border: 1px solid {PALETA["borda"]};
+    }}
+    .login-title {{
+        font-size: 26px;
         font-weight: 700;
-        color: #38bdf8;
-        margin-bottom: 10px;
+        color: {PALETA["acento_ciano"]};
+        margin-bottom: 8px;
         text-align: center;
-    }
-    .login-subtitle {
-        font-size: 14px;
-        color: #94a3b8;
+        letter-spacing: 0.5px;
+    }}
+    .login-subtitle {{
+        font-size: 13px;
+        color: {PALETA["texto_secundario"]};
         text-align: center;
-        margin-bottom: 30px;
-    }
-    .metric-card {
-        background-color: #1e293b;
-        padding: 20px;
+        margin-bottom: 24px;
+    }}
+
+    /* Cards e Painéis modernos */
+    div[data-testid="stMetric"] {{
+        background-color: {PALETA["fundo_card"]};
+        border: 1px solid {PALETA["borda"]};
+        padding: 16px 20px;
         border-radius: 12px;
-        border-left: 4px solid #38bdf8;
-    }
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }}
+    div[data-testid="stMetric"] label {{
+        color: {PALETA["texto_secundario"]} !important;
+        font-size: 11px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
+        color: {PALETA["acento_ciano"]} !important;
+        font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+        font-size: 28px !important;
+        font-weight: bold !important;
+    }}
+
+    /* Botões arredondados com transição e hover roxo/ciano */
+    .stButton button {{
+        background-color: {PALETA["fundo_secundario"]} !important;
+        color: {PALETA["texto_principal"]} !important;
+        border: 1px solid {PALETA["borda"]} !important;
+        border-radius: 10px !important;
+        padding: 8px 16px;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+    }}
+    .stButton button:hover {{
+        background-color: {PALETA["acento_roxo"]} !important;
+        border-color: {PALETA["acento_ciano"]} !important;
+        box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+        color: #FFFFFF !important;
+    }}
+
+    /* Sidebar customizada */
+    section[data-testid="stSidebar"] {{
+        background-color: {PALETA["fundo_secundario"]};
+        border-right: 1px solid {PALETA["borda"]};
+    }}
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{
+        color: {PALETA["acento_ciano"]} !important;
+    }}
+
+    /* Títulos principais da página */
+    h1, h2, h3 {{
+        color: {PALETA["texto_principal"]} !important;
+        font-family: 'Segoe UI Semibold', sans-serif;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
