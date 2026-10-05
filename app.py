@@ -25,96 +25,396 @@ st.set_page_config(
 # BLOCO DE ESTILO SEPARADO - PALETA DARK PREMIUM & COMPONENTES [VISUAL]
 # -----------------------------------------------------------------------------
 PALETA = {
-    "fundo_principal":  "#0B0F14",   # Fundo dark geral
-    "fundo_card":       "#151B23",   # Painéis e cards
-    "borda":            "#232B36",   # Borda fina dos painéis
-    "acento_azul":      "#3B82F6",   # Acento geral e item ativo
-    "verde_positivo":   "#22C55E",   # Entradas / Saldo positivo
-    "vermelho_negativo":"#EF4444",   # Saídas / Saldo negativo
-    "amarelo_pendente": "#F59E0B",   # Pendentes / Alertas
-    "texto_principal":  "#E6EDF3",   # Texto claro
-    "texto_secundario": "#8B949E",   # Legendas e rótulos
-    "hover_tabela":     "#1C242E",   # Hover de linhas
+    # FUNDOS EM CAMADAS
+    "fundo_principal":   "#0A0E14",
+    "fundo_sidebar":     "#0D1219",
+    "fundo_card":        "#131A23",
+    "fundo_hover":       "#1B232E",
+    "borda":             "#1F2937",
+    "borda_acento":      "#3B82F6",
+
+    # TEXTO
+    "texto_principal":   "#E8EEF5",
+    "texto_secundario":  "#8A95A5",
+
+    # ACENTO
+    "acento":            "#3B82F6",
+    "acento_hover":      "#2563EB",
+    "acento_glow":       "rgba(59,130,246,0.25)",
+
+    # SEMÂNTICA FINANCEIRA
+    "verde":             "#22C55E",
+    "verde_bg":          "rgba(34,197,94,0.12)",
+    "vermelho":          "#EF4444",
+    "vermelho_bg":       "rgba(239,68,68,0.12)",
+    "amarelo":           "#F59E0B",
+    "amarelo_bg":        "rgba(245,158,11,0.12)",
+    "roxo":              "#8B5CF6",
+    "ciano":             "#06B6D4",
 }
 
 FONTES = {
     "titulo":     ("Segoe UI Semibold", 20),
     "subtitulo":  ("Segoe UI", 14),
     "corpo":      ("Segoe UI", 11),
-    "numero":     ("Consolas", 32, "bold"),
+    "numero":     ("Consolas", 30, "bold"),
     "legenda":    ("Segoe UI", 9),
 }
 
 st.markdown(f"""
 <style>
-    /* [VISUAL] Fundo geral do aplicativo */
+    /* ============================================================
+       [VISUAL] BASE — FUNDO E TIPOGRAFIA GLOBAL
+       ============================================================ */
     .stApp {{
-        background-color: {PALETA["fundo_principal"]};
+        background:
+            radial-gradient(circle at 15% 0%, rgba(59,130,246,0.06), transparent 45%),
+            radial-gradient(circle at 85% 100%, rgba(139,92,246,0.05), transparent 45%),
+            {PALETA["fundo_principal"]};
         color: {PALETA["texto_principal"]};
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Segoe UI', 'Inter', sans-serif;
+    }}
+    html, body, [class*="css"] {{
+        font-family: 'Segoe UI', 'Inter', sans-serif;
+        color: {PALETA["texto_principal"]};
     }}
 
-    /* [VISUAL] Cards e Painéis */
+    /* ============================================================
+       [VISUAL] TÍTULOS E CABEÇALHOS
+       ============================================================ */
+    h1 {{
+        color: {PALETA["texto_principal"]} !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.5px !important;
+        font-size: 30px !important;
+    }}
+    h2, h3 {{
+        color: {PALETA["texto_principal"]} !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.3px !important;
+    }}
+    h4, h5 {{
+        color: {PALETA["texto_secundario"]} !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        font-size: 11px !important;
+    }}
+    p, span, label {{
+        color: {PALETA["texto_principal"]};
+    }}
+    [data-testid="stCaptionContainer"] {{
+        color: {PALETA["texto_secundario"]} !important;
+        font-size: 12px !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] SIDEBAR — MENU LATERAL ELEGANTE
+       ============================================================ */
+    section[data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, {PALETA["fundo_sidebar"]} 0%, {PALETA["fundo_principal"]} 100%);
+        border-right: 1px solid {PALETA["borda"]};
+    }}
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {{
+        color: {PALETA["texto_principal"]} !important;
+        border-bottom: 1px solid {PALETA["borda"]};
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }}
+    section[data-testid="stSidebar"] hr {{
+        border-color: {PALETA["borda"]} !important;
+        margin: 16px 0 !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] METRIC CARDS — PAINÉIS DE VALORES
+       ============================================================ */
     div[data-testid="stMetric"] {{
-        background-color: {PALETA["fundo_card"]};
+        background: linear-gradient(145deg, {PALETA["fundo_card"]} 0%, {PALETA["fundo_sidebar"]} 100%);
         border: 1px solid {PALETA["borda"]};
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        border-radius: 14px;
+        padding: 20px 22px !important;
+        box-shadow: 0 4px 24px -8px rgba(0,0,0,0.5);
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+    }}
+    div[data-testid="stMetric"]::before {{
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, {PALETA["acento"]}, transparent);
+        opacity: 0.6;
+    }}
+    div[data-testid="stMetric"]:hover {{
+        border-color: {PALETA["borda_acento"]};
+        box-shadow: 0 0 0 1px {PALETA["acento_glow"]}, 0 8px 32px -8px rgba(59,130,246,0.35);
+        transform: translateY(-2px);
     }}
     div[data-testid="stMetric"] label {{
         color: {PALETA["texto_secundario"]} !important;
-        font-size: 12px !important;
+        font-size: 11px !important;
         text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
     }}
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
-        color: {PALETA["acento_azul"]} !important;
-        font-family: 'Consolas', monospace !important;
-        font-size: 28px !important;
-        font-weight: bold !important;
+        color: {PALETA["texto_principal"]} !important;
+        font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+        font-size: 26px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.5px;
+    }}
+    div[data-testid="stMetric"] div[data-testid="stMetricDelta"] {{
+        font-size: 12px !important;
+        font-weight: 600 !important;
     }}
 
-    /* [VISUAL] Sidebar escura com item ativo em azul */
-    section[data-testid="stSidebar"] {{
-        background-color: {PALETA["fundo_card"]};
-        border-right: 1px solid {PALETA["borda"]};
-    }}
-    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label[data-baseweb="radio"] input:checked + div {{
-        background-color: {PALETA["acento_azul"]} !important;
-    }}
-
-    /* [VISUAL] Botões padrão */
-    .stButton button {{
-        background-color: {PALETA["fundo_card"]} !important;
+    /* ============================================================
+       [VISUAL] BOTÕES — ESTILO NEON ELEGANTE
+       ============================================================ */
+    .stButton > button,
+    .stDownloadButton > button,
+    .stFormSubmitButton > button {{
+        background: {PALETA["fundo_card"]} !important;
         color: {PALETA["texto_principal"]} !important;
         border: 1px solid {PALETA["borda"]} !important;
-        border-radius: 12px !important;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.2s ease;
+        border-radius: 10px !important;
+        padding: 10px 18px !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }}
-    .stButton button:hover {{
-        border-color: {PALETA["acento_azul"]} !important;
-        background-color: {PALETA["hover_tabela"]} !important;
+    .stButton > button:hover,
+    .stDownloadButton > button:hover,
+    .stFormSubmitButton > button:hover {{
+        background: {PALETA["acento"]} !important;
+        border-color: {PALETA["acento"]} !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 0 20px {PALETA["acento_glow"]};
+        transform: translateY(-1px);
+    }}
+    .stButton > button:active,
+    .stFormSubmitButton > button:active {{
+        transform: translateY(0);
     }}
 
-    /* [VISUAL] Tabelas com linhas alternadas e hover */
-    dataframe, table {{
-        background-color: {PALETA["fundo_card"]} !important;
+    /* ============================================================
+       [VISUAL] ABAS (TABS) — NAVEGAÇÃO MODERNA
+       ============================================================ */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 4px;
+        background: {PALETA["fundo_card"]};
+        padding: 6px;
         border-radius: 12px;
         border: 1px solid {PALETA["borda"]};
     }}
-    tr:nth-child(even) {{
-        background-color: rgba(35, 43, 54, 0.3);
+    .stTabs [data-baseweb="tab"] {{
+        height: 40px;
+        background: transparent !important;
+        border-radius: 8px !important;
+        color: {PALETA["texto_secundario"]} !important;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 0 16px;
+        transition: all 0.2s ease;
     }}
-    tr:hover {{
-        background-color: {PALETA["hover_tabela"]} !important;
+    .stTabs [data-baseweb="tab"]:hover {{
+        color: {PALETA["texto_principal"]} !important;
+        background: {PALETA["fundo_hover"]} !important;
+    }}
+    .stTabs [aria-selected="true"] {{
+        background: {PALETA["acento"]} !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 0 16px {PALETA["acento_glow"]};
+    }}
+    .stTabs [data-baseweb="tab-highlight"],
+    .stTabs [data-baseweb="tab-border"] {{
+        display: none !important;
     }}
 
-    /* [VISUAL] Tipografia de títulos e subtítulos */
-    h1, h2, h3, h4 {{
-        font-family: 'Segoe UI', sans-serif;
+    /* ============================================================
+       [VISUAL] INPUTS — TEXTO, NÚMERO, SELECT, DATA
+       ============================================================ */
+    .stTextInput input,
+    .stNumberInput input,
+    .stDateInput input,
+    div[data-baseweb="select"] > div {{
+        background: {PALETA["fundo_principal"]} !important;
         color: {PALETA["texto_principal"]} !important;
+        border: 1px solid {PALETA["borda"]} !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        transition: all 0.2s ease;
+    }}
+    .stTextInput input:focus,
+    .stNumberInput input:focus,
+    .stDateInput input:focus,
+    div[data-baseweb="select"] > div:focus-within {{
+        border-color: {PALETA["acento"]} !important;
+        box-shadow: 0 0 0 3px {PALETA["acento_glow"]} !important;
+    }}
+    .stNumberInput button {{
+        background: {PALETA["fundo_card"]} !important;
+        border-color: {PALETA["borda"]} !important;
+        color: {PALETA["texto_principal"]} !important;
+    }}
+    label[data-testid="stWidgetLabel"] p {{
+        color: {PALETA["texto_secundario"]} !important;
+        font-size: 11px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 600;
+    }}
+
+    /* ============================================================
+       [VISUAL] EXPANDER — PAINÉIS COLAPSÁVEIS
+       ============================================================ */
+    div[data-testid="stExpander"] {{
+        background: {PALETA["fundo_card"]};
+        border: 1px solid {PALETA["borda"]} !important;
+        border-radius: 12px !important;
+        overflow: hidden;
+    }}
+    div[data-testid="stExpander"] summary {{
+        font-weight: 600 !important;
+        color: {PALETA["texto_principal"]} !important;
+        padding: 14px 18px !important;
+        transition: background 0.2s ease;
+    }}
+    div[data-testid="stExpander"] summary:hover {{
+        background: {PALETA["fundo_hover"]};
+    }}
+
+    /* ============================================================
+       [VISUAL] ALERTAS — INFO, SUCCESS, WARNING, ERROR
+       ============================================================ */
+    div[data-testid="stAlert"] {{
+        border-radius: 12px !important;
+        border-left-width: 4px !important;
+        font-size: 13px !important;
+        padding: 12px 16px !important;
+    }}
+    div[data-testid="stAlert"][data-baseweb="notification"] {{
+        background: {PALETA["fundo_card"]} !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] TABELAS E DATAFRAMES
+       ============================================================ */
+    .stDataFrame, div[data-testid="stTable"] {{
+        background: {PALETA["fundo_card"]} !important;
+        border-radius: 12px !important;
+        border: 1px solid {PALETA["borda"]} !important;
+        overflow: hidden;
+    }}
+    div[data-testid="stTable"] table {{
+        background: {PALETA["fundo_card"]} !important;
+        color: {PALETA["texto_principal"]} !important;
+        border-collapse: collapse !important;
+    }}
+    div[data-testid="stTable"] thead tr th {{
+        background: {PALETA["fundo_sidebar"]} !important;
+        color: {PALETA["texto_secundario"]} !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        border-bottom: 1px solid {PALETA["borda"]} !important;
+        padding: 12px !important;
+    }}
+    div[data-testid="stTable"] tbody tr {{
+        border-bottom: 1px solid {PALETA["borda"]} !important;
+    }}
+    div[data-testid="stTable"] tbody tr:nth-child(even) {{
+        background: rgba(31, 41, 55, 0.25) !important;
+    }}
+    div[data-testid="stTable"] tbody tr:hover {{
+        background: {PALETA["fundo_hover"]} !important;
+    }}
+    div[data-testid="stTable"] tbody td {{
+        color: {PALETA["texto_principal"]} !important;
+        font-size: 13px !important;
+        padding: 10px 12px !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] PROGRESS BAR
+       ============================================================ */
+    .stProgress > div > div > div > div {{
+        background: linear-gradient(90deg, {PALETA["acento"]}, {PALETA["ciano"]}) !important;
+        border-radius: 999px !important;
+        box-shadow: 0 0 12px {PALETA["acento_glow"]};
+    }}
+    .stProgress > div > div > div {{
+        background: {PALETA["fundo_card"]} !important;
+        border-radius: 999px !important;
+        height: 8px !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] CHECKBOX E RADIO
+       ============================================================ */
+    .stCheckbox label span,
+    .stRadio label span {{
+        color: {PALETA["texto_principal"]} !important;
+        font-size: 13px !important;
+    }}
+    .stCheckbox input:checked + div,
+    .stRadio input:checked + div {{
+        background-color: {PALETA["acento"]} !important;
+        border-color: {PALETA["acento"]} !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] DIVISORES E FORMULÁRIOS
+       ============================================================ */
+    hr {{
+        border: none !important;
+        height: 1px !important;
+        background: linear-gradient(90deg, transparent, {PALETA["borda"]}, transparent) !important;
+        margin: 20px 0 !important;
+    }}
+    div[data-testid="stForm"] {{
+        background: {PALETA["fundo_card"]};
+        border: 1px solid {PALETA["borda"]};
+        border-radius: 14px;
+        padding: 20px !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] SCROLLBAR CUSTOMIZADA
+       ============================================================ */
+    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
+    ::-webkit-scrollbar-track {{ background: {PALETA["fundo_principal"]}; }}
+    ::-webkit-scrollbar-thumb {{
+        background: {PALETA["borda"]};
+        border-radius: 999px;
+    }}
+    ::-webkit-scrollbar-thumb:hover {{ background: {PALETA["acento"]}; }}
+
+    /* ============================================================
+       [VISUAL] TOOLTIP / POPOVER
+       ============================================================ */
+    div[data-baseweb="tooltip"] {{
+        background: {PALETA["fundo_card"]} !important;
+        border: 1px solid {PALETA["borda"]} !important;
+        border-radius: 8px !important;
+        color: {PALETA["texto_principal"]} !important;
+    }}
+
+    /* ============================================================
+       [VISUAL] LOGIN — TÍTULO COM GRADIENTE
+       ============================================================ */
+    .login-title {{
+        background: linear-gradient(90deg, {PALETA["acento"]}, {PALETA["ciano"]});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 1px;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -143,8 +443,8 @@ if not st.session_state['autenticado']:
     
     with col_l2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown('<div class="login-title" style="font-size:28px; font-weight:700; color:#3B82F6; text-align:center; margin-bottom:10px;">🛡️ INVEST CONTROL PRO</div>', unsafe_allow_html=True) # [VISUAL]
-        st.markdown('<div class="login-subtitle" style="font-size:14px; color:#8B949E; text-align:center; margin-bottom:30px;">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>', unsafe_allow_html=True) # [VISUAL]
+        st.markdown('<div class="login-title" style="font-size:28px; font-weight:700; text-align:center; margin-bottom:10px;">🛡️ INVEST CONTROL PRO</div>', unsafe_allow_html=True) # [VISUAL]
+        st.markdown('<div class="login-subtitle" style="font-size:14px; color:#8A95A5; text-align:center; margin-bottom:30px;">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>', unsafe_allow_html=True) # [VISUAL]
         
         with st.form("form_login"):
             st.markdown("### Credenciais de Acesso")
