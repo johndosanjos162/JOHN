@@ -431,11 +431,13 @@ col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+# ABAS DO APLICATIVO (INCLUINDO A NOVA ABA DE ANÁLISE DE LUCRO E DRE)
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📌 Planejamento & Cenários", 
     "💳 Controle de Gastos Diários", 
     "⚙ Gerenciar Custos Fixos", 
     "📈 Simulador de Investimentos",
+    "📊 DRE & Análise de Lucro",
     "📑 Relatórios PDF"
 ])
 
@@ -586,7 +588,49 @@ with tab4:
         fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
         st.plotly_chart(fig_invest, use_container_width=True)
 
+# --- NOVA ABA 5: DRE GERENCIAL E ANÁLISE DE LUCRO ---
 with tab5:
+    st.subheader("📊 DRE Gerencial & Análise de Lucratividade")
+    st.markdown("Demonstração financeira estruturada para avaliar o seu **Lucro Operacional Líquido** e a **Margem de Lucro** mensal.")
+
+    receita_bruta = salario_a_input + vr_a_input
+    custos_fixos_dre = total_fixos_a
+    despesas_var_dre = total_gastos_variaveis
+    lucro_operacional = receita_bruta - custos_fixos_dre - despesas_var_dre
+    margem_lucro = (lucro_operacional / receita_bruta) * 100 if receita_bruta > 0 else 0.0
+
+    col_dre1, col_dre2, col_dre3 = st.columns(3)
+    col_dre1.metric("Receita Bruta Total (Salário + VR)", f"R$ {receita_bruta:,.2f}")
+    col_dre2.metric("Lucro Líquido Operacional", f"R$ {lucro_operacional:,.2f}", delta=f"{margem_lucro:.1f}% Margem")
+    
+    # Runway (Quantos meses se sustenta com a reserva acumulada teórica de 6 meses)
+    reserva_acumulada_teorica = meta_reserva_efetiva * 6
+    runway_meses = reserva_acumulada_teorica / total_fixos_a if total_fixos_a > 0 else 0
+    col_dre3.metric("Runway de Segurança", f"{runway_meses:.1f} Meses", delta="Cobertura de Caixa")
+
+    st.divider()
+
+    # Tabela DRE Estilizada
+    dados_dre = [
+        ["Conta / Indicador", "Valor (R$)", "% da Receita Bruta"],
+        ["(+) Receita Bruta (Salário + VR)", f"R$ {receita_bruta:,.2f}", "100.0%"],
+        ["(-) Custos Fixos (Aluguel + Fixos)", f"R$ {custos_fixos_dre:,.2f}", f"{(custos_fixos_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(-) Despesas Variáveis / Saídas", f"R$ {despesas_var_dre:,.2f}", f"{(despesas_var_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(=) LUCRO LÍQUIDO OPERACIONAL", f"R$ {lucro_operacional:,.2f}", f"{margem_lucro:.1f}%"]
+    ]
+    
+    df_dre_tabela = pd.DataFrame(dados_dre[1:], columns=dados_dre[0])
+    st.table(df_dre_tabela)
+
+    st.markdown("#### 🔍 Diagnóstico de Oportunidade & Ladrões de Lucro")
+    if not df_variaveis.empty:
+        df_cat_analise = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
+        maior_gasto = df_cat_analise.loc[df_cat_analise["valor"].idxmax()]
+        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável, impactando diretamente o seu potencial de lucro.")
+    else:
+        st.success("🟢 Nenhuma distorção crítica identificada nas despesas variáveis até o momento.")
+
+with tab6:
     st.subheader("📑 Central de Relatórios em PDF")
     st.markdown("Gere relatórios executivos em PDF com divisão exata entre **Gastos Fixos** e **Despesas Variáveis / Perdas**.")
     
