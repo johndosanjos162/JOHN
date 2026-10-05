@@ -54,6 +54,17 @@ st.markdown("""
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
+# Inicialização do estado dos 12 meses da meta de reserva (Chaves booleanas)
+meses_nomes = [
+    "Janeiro", "Fevereiro", "Março", "Abril", 
+    "Maio", "Junho", "Julho", "Agosto", 
+    "Setembro", "Outubro", "Novembro", "Dezembro"
+]
+for i, m in enumerate(meses_nomes):
+    key_nome = f"reserva_mes_{i+1}"
+    if key_nome not in st.session_state:
+        st.session_state[key_nome] = False
+
 # -----------------------------------------------------------------------------
 # TELA DE LOGIN COM PROJEÇÃO ECONÔMICA (EXCLUSIVAMENTE CREDENCIAIS)
 # -----------------------------------------------------------------------------
@@ -322,7 +333,7 @@ col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
 
 st.divider()
 
-tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙️️ Gerenciar Custos Fixos"])
+tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙ Gerenciar Custos Fixos"])
 
 with tab1:
     st.subheader("🏠 Divisão e Proporcionalidade do Aluguel (A e B)")
@@ -353,19 +364,34 @@ with tab1:
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_right:
-        st.subheader("🛡 Meta de Reserva de Emergência (6 Meses)")
+        st.subheader("🛡 Progresso Anual da Reserva de Emergência (12 Meses)")
         meta_6_meses = total_fixos_a * 6
-        st.write(f"**Custo de Vida Essencial Mensal:** R$ {total_fixos_a:,.2f}")
-        st.write(f"**Meta Ideal de 6 Meses:** R$ {meta_6_meses:,.2f}")
+        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}")
+        st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}")
         
-        # Slider percentual de 1% a 100% da meta total de 6 meses
-        progresso_pct = st.slider("Simular percentual da meta acumulada:", 1, 100, 100, format="%d%%")
+        st.markdown("##### 🗓️ Clique nos meses concluídos:")
         
-        acumulado_simulado = meta_6_meses * (progresso_pct / 100.0)
-        pct_concluido = progresso_pct / 100.0
+        # Grid com 12 blocos de meses divididos em 4 colunas
+        cols_grid = st.columns(4)
+        meses_concluidos_count = 0
         
+        for i, nome_mes in enumerate(meses_nomes):
+            col_idx = i % 4
+            with cols_grid[col_idx]:
+                key_nome = f"reserva_mes_{i+1}"
+                status = st.checkbox(f"{i+1}. {nome_mes}", key=key_nome)
+                if status:
+                    meses_concluidos_count += 1
+                    
+        # Cálculo proporcional dos 12 meses (cada mês vale 8.33% / 1/12)
+        pct_concluido = meses_concluidos_count / 12.0
+        montante_acumulado_real = meta_reserva_efetiva * meses_concluidos_count
+        
+        st.markdown("---")
         st.progress(pct_concluido)
-        st.write(f"Neste nível ({progresso_pct}%), o montante acumulado será de **R$ {acumulado_simulado:,.2f}** em relação à meta de 6 meses.")
+        st.markdown(f"**Progresso Anual:** {meses_concluidos_count} de 12 meses concluídos (**{pct_concluido * 100:.1f}%**)")
+        st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**")
+        
         if not b_participa:
             st.warning("⚠️ **Atenção no Cenário Contingência:** Como você está assumindo o aluguel sozinho, o aporte foi reajustado para proteger seu caixa.")
 
