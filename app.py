@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Invest Control Pro - Sistema de Gestão Financeira",
-    page_icon="🛡️",
+    page_icon="🛡️️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -231,17 +231,44 @@ else:
 
 meta_reserva_input = st.sidebar.number_input("Meta de Reserva Mensal (R$)", value=float(config["meta_reserva_mensal"]), step=50.0)
 
-# Opção de edição manual dos valores de aluguel pago por A e B
+# Opção de edição manual interativa do aluguel (A altera B proporcionalmente ou vice-versa)
 st.sidebar.divider()
-st.sidebar.subheader("✏️ Edição Manual do Aluguel")
-edicao_manual = st.sidebar.checkbox("Habilitar edição manual dos valores de A e B", value=False)
+st.sidebar.subheader("✏️️ Edição Dinâmica do Aluguel")
+edicao_manual = st.sidebar.checkbox("Habilitar edição manual customizada", value=False)
+
+aluguel_a_input = None
+aluguel_b_input = None
 
 if edicao_manual and b_participa:
-    aluguel_a_input = st.sidebar.number_input("Valor que A vai pagar (R$)", value=float(aluguel_input * 0.5), step=25.0)
-    aluguel_b_input = st.sidebar.number_input("Valor que B vai pagar (R$)", value=float(aluguel_input * 0.5), step=25.0)
-else:
-    aluguel_a_input = None
-    aluguel_b_input = None
+    # Inicializa estado de controle se não existir
+    if 'campo_editado_ultimo' not in st.session_state:
+        st.session_state['campo_editado_ultimo'] = 'A'
+
+    # Opção para escolher qual valor o usuário deseja digitar diretamente
+    quem_edita = st.sidebar.radio("Quem você deseja ajustar?", options=["Pessoa A", "Pessoa B"], index=0)
+    
+    if quem_edita == "Pessoa A":
+        aluguel_a_input = st.sidebar.number_input(
+            "Valor pago por A (R$)", 
+            min_value=0.0, 
+            max_value=float(aluguel_input), 
+            value=float(aluguel_input * 0.5), 
+            step=25.0
+        )
+        # B ajusta-se automaticamente para fechar o aluguel total
+        aluguel_b_input = max(0.0, aluguel_input - aluguel_a_input)
+        st.sidebar.info(f"💡 Valor de B ajustado automaticamente: **R$ {aluguel_b_input:,.2f}**")
+    else:
+        aluguel_b_input = st.sidebar.number_input(
+            "Valor pago por B (R$)", 
+            min_value=0.0, 
+            max_value=float(aluguel_input), 
+            value=float(aluguel_input * 0.5), 
+            step=25.0
+        )
+        # A ajusta-se automaticamente para fechar o aluguel total
+        aluguel_a_input = max(0.0, aluguel_input - aluguel_b_input)
+        st.sidebar.info(f"💡 Valor de A ajustado automaticamente: **R$ {aluguel_a_input:,.2f}**")
 
 if st.sidebar.button("💾 Salvar Parâmetros"):
     salvar_configuracoes(aluguel_input, salario_a_input, salario_b_input, vr_a_input, meta_reserva_input)
@@ -255,11 +282,10 @@ if b_participa:
     if edicao_manual and aluguel_a_input is not None and aluguel_b_input is not None:
         aluguel_a = aluguel_a_input
         aluguel_b = aluguel_b_input
-        # Recalcula a porcentagem proporcional com base no que foi editado em relação ao total
-        total_editado = aluguel_a + aluguel_b
-        if total_editado > 0:
-            prop_a = aluguel_a / total_editado
-            prop_b = aluguel_b / total_editado
+        # Porcentagem calculada com base no valor editado versus o total do aluguel
+        if aluguel_input > 0:
+            prop_a = aluguel_a / aluguel_input
+            prop_b = aluguel_b / aluguel_input
         else:
             prop_a, prop_b = 0.5, 0.5
     else:
