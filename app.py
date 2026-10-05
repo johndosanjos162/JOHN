@@ -265,4 +265,4 @@ st.title("📊 Painel de Projeção Econômica & Controle")
 st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:.2f}")
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Salário Líquido (A)", f"R$ {salario_a_input
+col1.metric("Salário Líquido (A)", f"R$ {salario_a_input:,.2f}")
