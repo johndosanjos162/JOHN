@@ -385,7 +385,7 @@ if not st.session_state['autenticado']:
             btn_entrar = st.form_submit_button("Acessar Sistema", use_container_width=True)
 
             if btn_entrar:
-                if usuario == "admin" and senha == "admin123":
+                if usuario == "JOHN" and senha == "fgxv4VP0/*":
                     st.session_state['autenticado'] = True
                     st.success("Acesso autorizado com sucesso!")
                     st.rerun()
