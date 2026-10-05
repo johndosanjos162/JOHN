@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Invest Control Pro - Sistema de Gestão Financeira",
-    page_icon="🛡️",
+    page_icon="🛡️️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -103,7 +103,7 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
-# FUNÇÕES DE MANIPULAÇÃO DE DADOS
+# FUNÇÕES DE MANIPULAÇÃO DE DADOS (SUPABASE & FALLBACK)
 # -----------------------------------------------------------------------------
 def carregar_configuracoes():
     if supabase:
@@ -266,3 +266,91 @@ st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Salário Líquido (A)", f"R$ {salario_a_input:,.2f}")
+col2.metric("Sua Parte no Aluguel", f"R$ {aluguel_a:,.2f}", delta=f"{prop_a*100:.1f}% da renda" if b_participa else "100% (Integral)")
+col3.metric("Total Gastos Fixos (A)", f"R$ {total_fixos_a:,.2f}")
+col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
+
+st.divider()
+
+tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙️ Gerenciar Custos Fixos"])
+
+with tab1:
+    col_left, col_right = st.columns([1, 1])
+    
+    with col_left:
+        st.subheader("💡 Distribuição do Salário de A")
+        dados_composicao = {
+            "Categoria": ["Aluguel Proporcional", "Outros Custos Fixos", "Meta de Reserva", "Orçamento Variável Livre"],
+            "Valor": [aluguel_a, total_outros_fixos_a, meta_reserva_efetiva, max(0.0, saldo_para_variaveis)]
+        }
+        df_comp = pd.DataFrame(dados_composicao)
+        fig_pie = px.pie(df_comp, names="Categoria", values="Valor", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2)
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    with col_right:
+        st.subheader("🛡️ Meta de Reserva de Emergência (6 Meses)")
+        meta_6_meses = total_fixos_a * 6
+        st.write(f"**Custo de Vida Essencial Mensal:** R$ {total_fixos_a:,.2f}")
+        st.write(f"**Meta Ideal de 6 Meses:** R$ {meta_6_meses:,.2f}")
+        meses_acumulo = st.slider("Simular meses de reserva acumulados:", 1, 12, 6)
+        acumulado_simulado = meta_reserva_efetiva * meses_acumulo
+        pct_concluido = min(1.0, acumulado_simulado / meta_6_meses) if meta_6_meses > 0 else 0.0
+        st.progress(pct_concluido)
+        st.write(f"Em **{meses_acumulo} meses**, você acumulará **R$ {acumulado_simulado:,.2f}** ({pct_concluido*100:.1f}% da meta total).")
+        if not b_participa:
+            st.warning("⚠️ **Atenção no Cenário Contingência:** Como você está assumindo o aluguel sozinho, o aporte foi reajustado para proteger seu caixa.")
+
+with tab2:
+    st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
+    col_lim1, col_lim2, col_lim3 = st.columns(3)
+    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}")
+    col_lim2.metric("Total Já Gasto no Mês", f"R$ {total_gastos_variaveis:,.2f}")
+    col_lim3.metric("Saldo do Caixa Restante", f"R$ {saldo_caixa_restante:,.2f}", delta_color="normal" if saldo_caixa_restante >= 0 else "inverse")
+    st.divider()
+    
+    with st.expander("➕ Lançar Nova Despesa Variável", expanded=True):
+        with st.form("form_despesa", clear_on_submit=True):
+            f_col1, f_col2, f_col3, f_col4 = st.columns([2, 3, 2, 2])
+            data_exp = f_col1.date_input("Data")
+            desc_exp = f_col2.text_input("Descrição")
+            cat_exp = f_col3.selectbox("Categoria", ["Lazer / Passeios", "Farmácia / Saúde", "Vestuário", "Imprevistos", "Outros"])
+            val_exp = f_col4.number_input("Valor (R$)", min_value=0.01, step=10.0)
+            if st.form_submit_button("Lançar Despesa"):
+                if desc_exp:
+                    adicionar_despesa_variavel(data_exp, desc_exp, cat_exp, val_exp)
+                    st.rerun()
+                else:
+                    st.error("Informe uma descrição.")
+    
+    if not df_variaveis.empty:
+        for idx, row in df_variaveis.iterrows():
+            c1, c2, c3, c4, c5 = st.columns([2, 3, 2, 2, 1])
+            c1.write(row["data"].strftime("%d/%m/%Y"))
+            c2.write(row["descricao"])
+            c3.write(row["categoria"])
+            c4.write(f"R$ {row['valor']:,.2f}")
+            if c5.button("🗑️", key=f"del_var_{row['id']}"):
+                remover_despesa_variavel(row["id"])
+                st.rerun()
+
+with tab3:
+    st.subheader("📋 Tabela de Custos Fixos de A")
+    col_f1, col_f2 = st.columns([2, 1])
+    with col_f1:
+        if not df_gastos_fixos.empty:
+            for idx, row in df_gastos_fixos.iterrows():
+                cf1, cf2, cf3 = st.columns([3, 2, 1])
+                cf1.write(f"**{row['descricao']}**")
+                cf2.write(f"R$ {row['valor']:,.2f}")
+                if cf3.button("Excluir", key=f"del_fix_{row['id']}"):
+                    remover_gasto_fixo(row["id"])
+                    st.rerun()
+    with col_f2:
+        st.write("#### Adicionar Novo Gasto Fixo")
+        with st.form("form_fixo", clear_on_submit=True):
+            desc_fix = st.text_input("Descrição do Gasto")
+            val_fix = st.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0)
+            if st.form_submit_button("Cadastrar Gasto Fixo"):
+                if desc_fix:
+                    adicionar_gasto_fixo(desc_fix, val_fix)
+                    st.rerun()
