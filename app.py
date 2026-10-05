@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Invest Control Pro - Sistema de Gestão Financeira",
-    page_icon="🛡️️",
+    page_icon="🛡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -233,18 +233,13 @@ meta_reserva_input = st.sidebar.number_input("Meta de Reserva Mensal (R$)", valu
 
 # Opção de edição manual interativa do aluguel (A altera B proporcionalmente ou vice-versa)
 st.sidebar.divider()
-st.sidebar.subheader("✏️️ Edição Dinâmica do Aluguel")
+st.sidebar.subheader("✏ Edição Dinâmica do Aluguel")
 edicao_manual = st.sidebar.checkbox("Habilitar edição manual customizada", value=False)
 
 aluguel_a_input = None
 aluguel_b_input = None
 
 if edicao_manual and b_participa:
-    # Inicializa estado de controle se não existir
-    if 'campo_editado_ultimo' not in st.session_state:
-        st.session_state['campo_editado_ultimo'] = 'A'
-
-    # Opção para escolher qual valor o usuário deseja digitar diretamente
     quem_edita = st.sidebar.radio("Quem você deseja ajustar?", options=["Pessoa A", "Pessoa B"], index=0)
     
     if quem_edita == "Pessoa A":
@@ -255,7 +250,6 @@ if edicao_manual and b_participa:
             value=float(aluguel_input * 0.5), 
             step=25.0
         )
-        # B ajusta-se automaticamente para fechar o aluguel total
         aluguel_b_input = max(0.0, aluguel_input - aluguel_a_input)
         st.sidebar.info(f"💡 Valor de B ajustado automaticamente: **R$ {aluguel_b_input:,.2f}**")
     else:
@@ -266,7 +260,6 @@ if edicao_manual and b_participa:
             value=float(aluguel_input * 0.5), 
             step=25.0
         )
-        # A ajusta-se automaticamente para fechar o aluguel total
         aluguel_a_input = max(0.0, aluguel_input - aluguel_b_input)
         st.sidebar.info(f"💡 Valor de A ajustado automaticamente: **R$ {aluguel_a_input:,.2f}**")
 
@@ -282,14 +275,12 @@ if b_participa:
     if edicao_manual and aluguel_a_input is not None and aluguel_b_input is not None:
         aluguel_a = aluguel_a_input
         aluguel_b = aluguel_b_input
-        # Porcentagem calculada com base no valor editado versus o total do aluguel
         if aluguel_input > 0:
             prop_a = aluguel_a / aluguel_input
             prop_b = aluguel_b / aluguel_input
         else:
             prop_a, prop_b = 0.5, 0.5
     else:
-        # Cálculo proporcional automático padrão baseado nos salários
         if (salario_a_input + salario_b_input) > 0:
             renda_total = salario_a_input + salario_b_input
             prop_a = salario_a_input / renda_total
@@ -331,7 +322,7 @@ col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
 
 st.divider()
 
-tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙️ Gerenciar Custos Fixos"])
+tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙️️ Gerenciar Custos Fixos"])
 
 with tab1:
     st.subheader("🏠 Divisão e Proporcionalidade do Aluguel (A e B)")
@@ -366,11 +357,15 @@ with tab1:
         meta_6_meses = total_fixos_a * 6
         st.write(f"**Custo de Vida Essencial Mensal:** R$ {total_fixos_a:,.2f}")
         st.write(f"**Meta Ideal de 6 Meses:** R$ {meta_6_meses:,.2f}")
-        meses_acumulo = st.slider("Simular meses de reserva acumulados:", 1, 12, 6)
-        acumulado_simulado = meta_reserva_efetiva * meses_acumulo
-        pct_concluido = min(1.0, acumulado_simulado / meta_6_meses) if meta_6_meses > 0 else 0.0
+        
+        # Slider percentual de 1% a 100% da meta total de 6 meses
+        progresso_pct = st.slider("Simular percentual da meta acumulada:", 1, 100, 100, format="%d%%")
+        
+        acumulado_simulado = meta_6_meses * (progresso_pct / 100.0)
+        pct_concluido = progresso_pct / 100.0
+        
         st.progress(pct_concluido)
-        st.write(f"Em **{meses_acumulo} meses**, você acumulará **R$ {acumulado_simulado:,.2f}** ({pct_concluido*100:.1f}% da meta total).")
+        st.write(f"Neste nível ({progresso_pct}%), o montante acumulado será de **R$ {acumulado_simulado:,.2f}** em relação à meta de 6 meses.")
         if not b_participa:
             st.warning("⚠️ **Atenção no Cenário Contingência:** Como você está assumindo o aluguel sozinho, o aporte foi reajustado para proteger seu caixa.")
 
