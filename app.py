@@ -22,61 +22,56 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# BLOCO DE ESTILO SEPARADO - PALETA DARK PREMIUM & COMPONENTES [VISUAL]
+# BLOCO DE ESTILO SEPARADO - PALETA DARK PREMIUM [VISUAL]
 # -----------------------------------------------------------------------------
 PALETA = {
-    # FUNDOS EM CAMADAS
-    "fundo_principal":   "#0A0E14",
-    "fundo_sidebar":     "#0D1219",
-    "fundo_card":        "#131A23",
-    "fundo_hover":       "#1B232E",
-    "borda":             "#1F2937",
+    "fundo_principal":   "#070A0F",
+    "fundo_sidebar":     "#0B1018",
+    "fundo_card":        "#111823",
+    "fundo_card2":       "#0E141D",
+    "fundo_hover":       "#182230",
+    "borda":             "#1E2937",
     "borda_acento":      "#3B82F6",
 
-    # TEXTO
-    "texto_principal":   "#E8EEF5",
-    "texto_secundario":  "#8A95A5",
+    "texto_principal":   "#EAF0F7",
+    "texto_secundario":  "#8B96A7",
+    "texto_fraco":       "#4A5563",
 
-    # ACENTO
     "acento":            "#3B82F6",
     "acento_hover":      "#2563EB",
-    "acento_glow":       "rgba(59,130,246,0.25)",
+    "acento_glow":       "rgba(59,130,246,0.35)",
+    "acento_glow_soft":  "rgba(59,130,246,0.15)",
 
-    # SEMÂNTICA FINANCEIRA
     "verde":             "#22C55E",
-    "verde_bg":          "rgba(34,197,94,0.12)",
+    "verde_bg":          "rgba(34,197,94,0.14)",
     "vermelho":          "#EF4444",
-    "vermelho_bg":       "rgba(239,68,68,0.12)",
+    "vermelho_bg":       "rgba(239,68,68,0.14)",
     "amarelo":           "#F59E0B",
-    "amarelo_bg":        "rgba(245,158,11,0.12)",
+    "amarelo_bg":        "rgba(245,158,11,0.14)",
     "roxo":              "#8B5CF6",
     "ciano":             "#06B6D4",
-}
-
-FONTES = {
-    "titulo":     ("Segoe UI Semibold", 20),
-    "subtitulo":  ("Segoe UI", 14),
-    "corpo":      ("Segoe UI", 11),
-    "numero":     ("Consolas", 30, "bold"),
-    "legenda":    ("Segoe UI", 9),
 }
 
 st.markdown(f"""
 <style>
     /* ============================================================
-       [VISUAL] BASE — FUNDO E TIPOGRAFIA GLOBAL
+       [VISUAL] RESET E BASE
        ============================================================ */
     .stApp {{
         background:
-            radial-gradient(circle at 15% 0%, rgba(59,130,246,0.06), transparent 45%),
-            radial-gradient(circle at 85% 100%, rgba(139,92,246,0.05), transparent 45%),
-            {PALETA["fundo_principal"]};
+            radial-gradient(ellipse 80% 50% at 20% 0%, rgba(59,130,246,0.10), transparent 60%),
+            radial-gradient(ellipse 80% 50% at 80% 100%, rgba(139,92,246,0.08), transparent 60%),
+            linear-gradient(180deg, {PALETA["fundo_principal"]} 0%, #05070B 100%);
         color: {PALETA["texto_principal"]};
-        font-family: 'Segoe UI', 'Inter', sans-serif;
+        font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
     }}
     html, body, [class*="css"] {{
-        font-family: 'Segoe UI', 'Inter', sans-serif;
+        font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
         color: {PALETA["texto_principal"]};
+    }}
+    .main .block-container {{
+        padding: 1.5rem 2.2rem 3rem 2.2rem;
+        max-width: 1500px;
     }}
 
     /* ============================================================
@@ -85,8 +80,11 @@ st.markdown(f"""
     h1 {{
         color: {PALETA["texto_principal"]} !important;
         font-weight: 700 !important;
-        letter-spacing: -0.5px !important;
+        letter-spacing: -0.6px !important;
         font-size: 30px !important;
+        background: linear-gradient(90deg, #FFFFFF 0%, #B8C4D6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }}
     h2, h3 {{
         color: {PALETA["texto_principal"]} !important;
@@ -97,23 +95,24 @@ st.markdown(f"""
         color: {PALETA["texto_secundario"]} !important;
         font-weight: 600 !important;
         text-transform: uppercase;
-        letter-spacing: 1.2px;
+        letter-spacing: 1.3px;
         font-size: 11px !important;
     }}
-    p, span, label {{
-        color: {PALETA["texto_principal"]};
-    }}
+    p, span, label {{ color: {PALETA["texto_principal"]}; }}
     [data-testid="stCaptionContainer"] {{
         color: {PALETA["texto_secundario"]} !important;
         font-size: 12px !important;
     }}
 
     /* ============================================================
-       [VISUAL] SIDEBAR — MENU LATERAL ELEGANTE
+       [VISUAL] SIDEBAR PREMIUM
        ============================================================ */
     section[data-testid="stSidebar"] {{
         background: linear-gradient(180deg, {PALETA["fundo_sidebar"]} 0%, {PALETA["fundo_principal"]} 100%);
         border-right: 1px solid {PALETA["borda"]};
+    }}
+    section[data-testid="stSidebar"] > div:first-child {{
+        padding-top: 1.5rem;
     }}
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
@@ -122,22 +121,30 @@ st.markdown(f"""
         border-bottom: 1px solid {PALETA["borda"]};
         padding-bottom: 10px;
         margin-bottom: 12px;
+        letter-spacing: 0.3px;
     }}
     section[data-testid="stSidebar"] hr {{
         border-color: {PALETA["borda"]} !important;
-        margin: 16px 0 !important;
+        margin: 18px 0 !important;
+    }}
+    section[data-testid="stSidebar"] .stButton > button {{
+        text-align: left !important;
+        justify-content: flex-start !important;
     }}
 
     /* ============================================================
        [VISUAL] METRIC CARDS — PAINÉIS DE VALORES
        ============================================================ */
     div[data-testid="stMetric"] {{
-        background: linear-gradient(145deg, {PALETA["fundo_card"]} 0%, {PALETA["fundo_sidebar"]} 100%);
+        background:
+            linear-gradient(145deg, {PALETA["fundo_card"]} 0%, {PALETA["fundo_card2"]} 100%);
         border: 1px solid {PALETA["borda"]};
-        border-radius: 14px;
+        border-radius: 16px;
         padding: 20px 22px !important;
-        box-shadow: 0 4px 24px -8px rgba(0,0,0,0.5);
-        transition: all 0.25s ease;
+        box-shadow:
+            0 8px 24px -12px rgba(0,0,0,0.6),
+            inset 0 1px 0 rgba(255,255,255,0.02);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
     }}
@@ -146,24 +153,37 @@ st.markdown(f"""
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 2px;
-        background: linear-gradient(90deg, transparent, {PALETA["acento"]}, transparent);
-        opacity: 0.6;
+        background: linear-gradient(90deg, transparent, {PALETA["acento"]}, {PALETA["ciano"]}, transparent);
+        opacity: 0.7;
+    }}
+    div[data-testid="stMetric"]::after {{
+        content: '';
+        position: absolute;
+        top: -50%; right: -50%;
+        width: 200%; height: 200%;
+        background: radial-gradient(circle, {PALETA["acento_glow_soft"]} 0%, transparent 60%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
     }}
     div[data-testid="stMetric"]:hover {{
         border-color: {PALETA["borda_acento"]};
-        box-shadow: 0 0 0 1px {PALETA["acento_glow"]}, 0 8px 32px -8px rgba(59,130,246,0.35);
-        transform: translateY(-2px);
+        box-shadow:
+            0 0 0 1px {PALETA["acento_glow"]},
+            0 12px 40px -12px rgba(59,130,246,0.45);
+        transform: translateY(-3px);
     }}
+    div[data-testid="stMetric"]:hover::after {{ opacity: 1; }}
     div[data-testid="stMetric"] label {{
         color: {PALETA["texto_secundario"]} !important;
         font-size: 11px !important;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.2px;
         font-weight: 600;
     }}
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
         color: {PALETA["texto_principal"]} !important;
-        font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+        font-family: 'Consolas', 'JetBrains Mono', 'Roboto Mono', monospace !important;
         font-size: 26px !important;
         font-weight: 700 !important;
         letter-spacing: -0.5px;
@@ -174,71 +194,77 @@ st.markdown(f"""
     }}
 
     /* ============================================================
-       [VISUAL] BOTÕES — ESTILO NEON ELEGANTE
+       [VISUAL] BOTÕES — NEON ELEGANTE
        ============================================================ */
     .stButton > button,
     .stDownloadButton > button,
     .stFormSubmitButton > button {{
-        background: {PALETA["fundo_card"]} !important;
+        background: linear-gradient(145deg, {PALETA["fundo_card"]} 0%, {PALETA["fundo_card2"]} 100%) !important;
         color: {PALETA["texto_principal"]} !important;
         border: 1px solid {PALETA["borda"]} !important;
         border-radius: 10px !important;
-        padding: 10px 18px !important;
+        padding: 10px 20px !important;
         font-weight: 600 !important;
         font-size: 13px !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        letter-spacing: 0.2px;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }}
     .stButton > button:hover,
     .stDownloadButton > button:hover,
     .stFormSubmitButton > button:hover {{
-        background: {PALETA["acento"]} !important;
+        background: linear-gradient(145deg, {PALETA["acento"]} 0%, {PALETA["acento_hover"]} 100%) !important;
         border-color: {PALETA["acento"]} !important;
         color: #FFFFFF !important;
-        box-shadow: 0 0 20px {PALETA["acento_glow"]};
-        transform: translateY(-1px);
+        box-shadow:
+            0 0 22px {PALETA["acento_glow"]},
+            0 6px 18px rgba(0,0,0,0.35);
+        transform: translateY(-2px);
     }}
     .stButton > button:active,
     .stFormSubmitButton > button:active {{
         transform: translateY(0);
+        box-shadow: 0 0 12px {PALETA["acento_glow"]};
     }}
 
     /* ============================================================
-       [VISUAL] ABAS (TABS) — NAVEGAÇÃO MODERNA
+       [VISUAL] ABAS (TABS)
        ============================================================ */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 4px;
         background: {PALETA["fundo_card"]};
         padding: 6px;
-        border-radius: 12px;
+        border-radius: 14px;
         border: 1px solid {PALETA["borda"]};
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
     }}
     .stTabs [data-baseweb="tab"] {{
-        height: 40px;
+        height: 42px;
         background: transparent !important;
-        border-radius: 8px !important;
+        border-radius: 9px !important;
         color: {PALETA["texto_secundario"]} !important;
         font-weight: 600;
         font-size: 13px;
-        padding: 0 16px;
-        transition: all 0.2s ease;
+        padding: 0 18px;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        letter-spacing: 0.2px;
     }}
     .stTabs [data-baseweb="tab"]:hover {{
         color: {PALETA["texto_principal"]} !important;
         background: {PALETA["fundo_hover"]} !important;
     }}
     .stTabs [aria-selected="true"] {{
-        background: {PALETA["acento"]} !important;
+        background: linear-gradient(145deg, {PALETA["acento"]} 0%, {PALETA["acento_hover"]} 100%) !important;
         color: #FFFFFF !important;
-        box-shadow: 0 0 16px {PALETA["acento_glow"]};
+        box-shadow:
+            0 0 18px {PALETA["acento_glow"]},
+            inset 0 1px 0 rgba(255,255,255,0.15);
     }}
     .stTabs [data-baseweb="tab-highlight"],
-    .stTabs [data-baseweb="tab-border"] {{
-        display: none !important;
-    }}
+    .stTabs [data-baseweb="tab-border"] {{ display: none !important; }}
 
     /* ============================================================
-       [VISUAL] INPUTS — TEXTO, NÚMERO, SELECT, DATA
+       [VISUAL] INPUTS
        ============================================================ */
     .stTextInput input,
     .stNumberInput input,
@@ -250,40 +276,51 @@ st.markdown(f"""
         border-radius: 10px !important;
         font-size: 13px !important;
         transition: all 0.2s ease;
+        padding: 10px 12px !important;
+    }}
+    .stTextInput input::placeholder,
+    .stNumberInput input::placeholder {{
+        color: {PALETA["texto_fraco"]} !important;
     }}
     .stTextInput input:focus,
     .stNumberInput input:focus,
     .stDateInput input:focus,
     div[data-baseweb="select"] > div:focus-within {{
         border-color: {PALETA["acento"]} !important;
-        box-shadow: 0 0 0 3px {PALETA["acento_glow"]} !important;
+        box-shadow: 0 0 0 3px {PALETA["acento_glow_soft"]} !important;
+        outline: none !important;
     }}
     .stNumberInput button {{
         background: {PALETA["fundo_card"]} !important;
         border-color: {PALETA["borda"]} !important;
         color: {PALETA["texto_principal"]} !important;
     }}
+    .stNumberInput button:hover {{
+        background: {PALETA["acento"]} !important;
+        color: white !important;
+    }}
     label[data-testid="stWidgetLabel"] p {{
         color: {PALETA["texto_secundario"]} !important;
         font-size: 11px !important;
         text-transform: uppercase;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.9px;
         font-weight: 600;
     }}
 
     /* ============================================================
-       [VISUAL] EXPANDER — PAINÉIS COLAPSÁVEIS
+       [VISUAL] EXPANDER
        ============================================================ */
     div[data-testid="stExpander"] {{
         background: {PALETA["fundo_card"]};
         border: 1px solid {PALETA["borda"]} !important;
-        border-radius: 12px !important;
+        border-radius: 14px !important;
         overflow: hidden;
+        box-shadow: 0 4px 16px -8px rgba(0,0,0,0.4);
     }}
     div[data-testid="stExpander"] summary {{
         font-weight: 600 !important;
         color: {PALETA["texto_principal"]} !important;
-        padding: 14px 18px !important;
+        padding: 14px 20px !important;
         transition: background 0.2s ease;
     }}
     div[data-testid="stExpander"] summary:hover {{
@@ -291,13 +328,14 @@ st.markdown(f"""
     }}
 
     /* ============================================================
-       [VISUAL] ALERTAS — INFO, SUCCESS, WARNING, ERROR
+       [VISUAL] ALERTAS
        ============================================================ */
     div[data-testid="stAlert"] {{
         border-radius: 12px !important;
         border-left-width: 4px !important;
         font-size: 13px !important;
-        padding: 12px 16px !important;
+        padding: 14px 18px !important;
+        box-shadow: 0 4px 16px -8px rgba(0,0,0,0.4);
     }}
     div[data-testid="stAlert"][data-baseweb="notification"] {{
         background: {PALETA["fundo_card"]} !important;
@@ -308,9 +346,10 @@ st.markdown(f"""
        ============================================================ */
     .stDataFrame, div[data-testid="stTable"] {{
         background: {PALETA["fundo_card"]} !important;
-        border-radius: 12px !important;
+        border-radius: 14px !important;
         border: 1px solid {PALETA["borda"]} !important;
         overflow: hidden;
+        box-shadow: 0 4px 16px -8px rgba(0,0,0,0.4);
     }}
     div[data-testid="stTable"] table {{
         background: {PALETA["fundo_card"]} !important;
@@ -321,17 +360,18 @@ st.markdown(f"""
         background: {PALETA["fundo_sidebar"]} !important;
         color: {PALETA["texto_secundario"]} !important;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.2px;
         font-size: 11px !important;
         font-weight: 700 !important;
         border-bottom: 1px solid {PALETA["borda"]} !important;
-        padding: 12px !important;
+        padding: 14px !important;
     }}
     div[data-testid="stTable"] tbody tr {{
         border-bottom: 1px solid {PALETA["borda"]} !important;
+        transition: background 0.15s ease;
     }}
     div[data-testid="stTable"] tbody tr:nth-child(even) {{
-        background: rgba(31, 41, 55, 0.25) !important;
+        background: rgba(31, 41, 55, 0.2) !important;
     }}
     div[data-testid="stTable"] tbody tr:hover {{
         background: {PALETA["fundo_hover"]} !important;
@@ -339,21 +379,21 @@ st.markdown(f"""
     div[data-testid="stTable"] tbody td {{
         color: {PALETA["texto_principal"]} !important;
         font-size: 13px !important;
-        padding: 10px 12px !important;
+        padding: 12px 14px !important;
     }}
 
     /* ============================================================
        [VISUAL] PROGRESS BAR
        ============================================================ */
     .stProgress > div > div > div > div {{
-        background: linear-gradient(90deg, {PALETA["acento"]}, {PALETA["ciano"]}) !important;
+        background: linear-gradient(90deg, {PALETA["acento"]} 0%, {PALETA["ciano"]} 100%) !important;
         border-radius: 999px !important;
-        box-shadow: 0 0 12px {PALETA["acento_glow"]};
+        box-shadow: 0 0 14px {PALETA["acento_glow"]};
     }}
     .stProgress > div > div > div {{
         background: {PALETA["fundo_card"]} !important;
         border-radius: 999px !important;
-        height: 8px !important;
+        height: 10px !important;
     }}
 
     /* ============================================================
@@ -377,44 +417,95 @@ st.markdown(f"""
         border: none !important;
         height: 1px !important;
         background: linear-gradient(90deg, transparent, {PALETA["borda"]}, transparent) !important;
-        margin: 20px 0 !important;
+        margin: 24px 0 !important;
     }}
     div[data-testid="stForm"] {{
-        background: {PALETA["fundo_card"]};
+        background:
+            linear-gradient(145deg, {PALETA["fundo_card"]} 0%, {PALETA["fundo_card2"]} 100%);
         border: 1px solid {PALETA["borda"]};
-        border-radius: 14px;
-        padding: 20px !important;
+        border-radius: 16px;
+        padding: 24px !important;
+        box-shadow:
+            0 8px 24px -12px rgba(0,0,0,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.02);
     }}
 
     /* ============================================================
-       [VISUAL] SCROLLBAR CUSTOMIZADA
+       [VISUAL] SCROLLBAR
        ============================================================ */
-    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
-    ::-webkit-scrollbar-track {{ background: {PALETA["fundo_principal"]}; }}
-    ::-webkit-scrollbar-thumb {{
-        background: {PALETA["borda"]};
+    ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+    ::-webkit-scrollbar-track {{
+        background: {PALETA["fundo_principal"]};
         border-radius: 999px;
     }}
-    ::-webkit-scrollbar-thumb:hover {{ background: {PALETA["acento"]}; }}
+    ::-webkit-scrollbar-thumb {{
+        background: linear-gradient(180deg, {PALETA["borda"]} 0%, #2A3546 100%);
+        border-radius: 999px;
+        border: 2px solid {PALETA["fundo_principal"]};
+    }}
+    ::-webkit-scrollbar-thumb:hover {{
+        background: {PALETA["acento"]};
+    }}
 
     /* ============================================================
-       [VISUAL] TOOLTIP / POPOVER
+       [VISUAL] TOOLTIP
        ============================================================ */
     div[data-baseweb="tooltip"] {{
         background: {PALETA["fundo_card"]} !important;
         border: 1px solid {PALETA["borda"]} !important;
         border-radius: 8px !important;
         color: {PALETA["texto_principal"]} !important;
+        box-shadow: 0 8px 24px -8px rgba(0,0,0,0.6);
     }}
 
     /* ============================================================
-       [VISUAL] LOGIN — TÍTULO COM GRADIENTE
+       [VISUAL] LOGIN — TÍTULO COM GRADIENTE PREMIUM
        ============================================================ */
     .login-title {{
-        background: linear-gradient(90deg, {PALETA["acento"]}, {PALETA["ciano"]});
+        background: linear-gradient(90deg, {PALETA["acento"]} 0%, {PALETA["ciano"]} 50%, {PALETA["roxo"]} 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+        filter: drop-shadow(0 0 20px {PALETA["acento_glow"]});
+    }}
+    .login-subtitle {{
+        font-size: 14px;
+        color: {PALETA["texto_secundario"]};
+        text-align: center;
+        margin-bottom: 30px;
+        letter-spacing: 0.5px;
+    }}
+
+    /* ============================================================
+       [VISUAL] BADGES DE STATUS
+       ============================================================ */
+    .badge-status {{
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        margin-top: 4px;
+    }}
+    .badge-ok {{
+        background: {PALETA["verde_bg"]};
+        color: {PALETA["verde"]};
+        border: 1px solid rgba(34,197,94,0.3);
+    }}
+    .badge-pendente {{
+        background: {PALETA["amarelo_bg"]};
+        color: {PALETA["amarelo"]};
+        border: 1px solid rgba(245,158,11,0.3);
+    }}
+
+    /* ============================================================
+       [VISUAL] GLOBAL — REMOVE MENU STREAMLIT
+       ============================================================ */
+    #MainMenu, footer {{ visibility: hidden; }}
+    header[data-testid="stHeader"] {{
+        background: transparent;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -436,15 +527,21 @@ for i, m in enumerate(meses_nomes):
         st.session_state[key_nome] = False
 
 # -----------------------------------------------------------------------------
-# TELA DE LOGIN
+# TELA DE LOGIN  [VISUAL]
 # -----------------------------------------------------------------------------
 if not st.session_state['autenticado']:
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
     
     with col_l2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown('<div class="login-title" style="font-size:28px; font-weight:700; text-align:center; margin-bottom:10px;">🛡️ INVEST CONTROL PRO</div>', unsafe_allow_html=True) # [VISUAL]
-        st.markdown('<div class="login-subtitle" style="font-size:14px; color:#8A95A5; text-align:center; margin-bottom:30px;">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>', unsafe_allow_html=True) # [VISUAL]
+        st.markdown(
+            '<div class="login-title" style="font-size:32px; text-align:center; margin-bottom:12px;">🛡️ INVEST CONTROL PRO</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            '<div class="login-subtitle">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>',
+            unsafe_allow_html=True
+        )
         
         with st.form("form_login"):
             st.markdown("### Credenciais de Acesso")
@@ -582,7 +679,7 @@ def remover_despesa_variavel(despesa_id):
             pass
 
 # -----------------------------------------------------------------------------
-# FUNÇÃO GERADORA DE RELATÓRIO PDF (SEPARADO POR GASTOS E PERDAS)
+# FUNÇÃO GERADORA DE RELATÓRIO PDF
 # -----------------------------------------------------------------------------
 def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a, aluguel_b):
     buffer = BytesIO()
@@ -696,7 +793,6 @@ else:
 
 meta_reserva_input = st.sidebar.number_input("Meta de Reserva Mensal (R$)", value=float(config["meta_reserva_mensal"]), step=50.0)
 
-# Opção de edição manual interativa do aluguel (Salva na Base de Dados)
 st.sidebar.divider()
 st.sidebar.subheader("✏ Edição Dinâmica do Aluguel")
 edicao_manual_default = bool(config.get("usa_edicao_manual", False))
@@ -783,13 +879,13 @@ saldo_caixa_restante = saldo_para_variaveis - total_gastos_variaveis
 # CORPO PRINCIPAL DO APLICATIVO
 # -----------------------------------------------------------------------------
 st.title("📊 Painel de Projeção Econômica & Controle")
-st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Formato BR
+st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Salário Líquido (A)", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal e formato BR
-col2.metric("Sua Parte no Aluguel", f"- R$ {aluguel_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{prop_a*100:.1f}% do aluguel" if b_participa else "100% (Integral)") # [VISUAL] Sinal
-col3.metric("Total Gastos Fixos (A)", f"- R$ {total_fixos_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal
-col4.metric("Aporte Reserva Mensal", f"- R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal
+col1.metric("Salário Líquido (A)", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+col2.metric("Sua Parte no Aluguel", f"- R$ {aluguel_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{prop_a*100:.1f}% do aluguel" if b_participa else "100% (Integral)")
+col3.metric("Total Gastos Fixos (A)", f"- R$ {total_fixos_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+col4.metric("Aporte Reserva Mensal", f"- R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
 
 st.divider()
 
@@ -806,14 +902,14 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 with tab1:
     st.subheader("🏠 Divisão e Proporcionalidade do Aluguel (A e B)")
     col_div1, col_div2, col_div3 = st.columns(3)
-    col_div1.metric("Salário de A", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-    col_div2.metric("Salário de B", f"+ R$ {salario_b_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',') if b_participa else "R$ 0,00") # [VISUAL]
-    col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_div1.metric("Salário de A", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_div2.metric("Salário de B", f"+ R$ {salario_b_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',') if b_participa else "R$ 0,00")
+    col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
 
     col_val1, col_val2 = st.columns(2)
-    col_val1.info(f"👤 **Pessoa A vai pagar:** - R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_val1.info(f"👤 **Pessoa A vai pagar:** - R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
     if b_participa:
-        col_val2.success(f"👥 **Pessoa B vai pagar:** - R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        col_val2.success(f"👥 **Pessoa B vai pagar:** - R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
     else:
         col_val2.warning("⚠️ **Pessoa B:** Sem participação neste cenário (A assume 100%).")
 
@@ -829,15 +925,20 @@ with tab1:
         }
         df_comp = pd.DataFrame(dados_composicao)
         fig_pie = px.pie(df_comp, names="Categoria", values="Valor", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2)
-        fig_pie.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3") # [VISUAL]
+        fig_pie.update_layout(
+            paper_bgcolor="#111823",
+            plot_bgcolor="#111823",
+            font_color="#EAF0F7",
+            legend=dict(bgcolor="rgba(0,0,0,0)")
+        )
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_right:
         st.subheader("🛡 Progresso Anual da Reserva de Emergência (12 Meses)")
-        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-        st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
         
-        st.markdown("##### 🗓️ Status de Pagamento dos Meses:") # [VISUAL] Status e badges
+        st.markdown("##### 🗓️ Status de Pagamento dos Meses:")
         cols_grid = st.columns(4)
         meses_concluidos_count = 0
         
@@ -848,9 +949,9 @@ with tab1:
                 status = st.checkbox(f"{i+1}. {nome_mes}", key=key_nome)
                 if status:
                     meses_concluidos_count += 1
-                    st.markdown("<span style='color:#22C55E; font-size:12px;'>● pago</span>", unsafe_allow_html=True) # [VISUAL] Badge ● pago
+                    st.markdown('<span class="badge-status badge-ok">● pago</span>', unsafe_allow_html=True)
                 else:
-                    st.markdown("<span style='color:#F59E0B; font-size:12px;'>⏳ pendente</span>", unsafe_allow_html=True) # [VISUAL] Badge ⏳ pendente
+                    st.markdown('<span class="badge-status badge-pendente">⏳ pendente</span>', unsafe_allow_html=True)
                     
         pct_concluido = meses_concluidos_count / 12.0
         montante_acumulado_real = meta_reserva_efetiva * meses_concluidos_count
@@ -858,14 +959,14 @@ with tab1:
         st.markdown("---")
         st.progress(pct_concluido)
         st.markdown(f"**Progresso Anual:** {meses_concluidos_count} de 12 meses concluídos (**{pct_concluido * 100:.1f}%**)")
-        st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**".replace('.', '#').replace(',', '.').replace('#', ','))
 
 with tab2:
     st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
     col_lim1, col_lim2, col_lim3 = st.columns(3)
-    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-    col_lim2.metric("Total Já Gasto no Mês", f"- R$ {total_gastos_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-    col_lim3.metric("Saldo do Caixa Restante", f"{'+' if saldo_caixa_restante >=0 else '-'} R$ {abs(saldo_caixa_restante):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_caixa_restante >= 0 else "inverse") # [VISUAL]
+    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim2.metric("Total Já Gasto no Mês", f"- R$ {total_gastos_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim3.metric("Saldo do Caixa Restante", f"{'+' if saldo_caixa_restante >=0 else '-'} R$ {abs(saldo_caixa_restante):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_caixa_restante >= 0 else "inverse")
     st.divider()
     
     with st.expander("➕ Lançar Nova Despesa Variável", expanded=True):
@@ -889,7 +990,7 @@ with tab2:
             c1.write(row["data"].strftime("%d/%m/%Y"))
             c2.write(row["descricao"])
             c3.write(row["categoria"])
-            c4.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+            c4.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
             if c5.button("🗑️", key=f"del_var_{row['id']}"):
                 remover_despesa_variavel(row["id"])
                 st.rerun()
@@ -902,7 +1003,7 @@ with tab3:
             for idx, row in df_gastos_fixos.iterrows():
                 cf1, cf2, cf3 = st.columns([3, 2, 1])
                 cf1.write(f"**{row['descricao']}**")
-                cf2.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+                cf2.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
                 if cf3.button("Excluir", key=f"del_fix_{row['id']}"):
                     remover_gasto_fixo(row["id"])
                     st.rerun()
@@ -946,12 +1047,17 @@ with tab4:
     if lista_projecao:
         df_proj = pd.DataFrame(lista_projecao)
         col_res1, col_res2, col_res3 = st.columns(3)
-        col_res1.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-        col_res2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-        col_res3.metric("Rendimento (Juros)", f"+ R$ {(montante_atual - total_investido):,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        col_res1.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res3.metric("Rendimento (Juros)", f"+ R$ {(montante_atual - total_investido):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
         st.divider()
         fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
-        fig_invest.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3") # [VISUAL]
+        fig_invest.update_layout(
+            paper_bgcolor="#111823",
+            plot_bgcolor="#111823",
+            font_color="#EAF0F7",
+            legend=dict(bgcolor="rgba(0,0,0,0)")
+        )
         st.plotly_chart(fig_invest, use_container_width=True)
 
 with tab5:
@@ -965,8 +1071,8 @@ with tab5:
     margem_lucro = (lucro_operacional / receita_bruta) * 100 if receita_bruta > 0 else 0.0
 
     col_dre1, col_dre2, col_dre3 = st.columns(3)
-    col_dre1.metric("Receita Bruta Total (Salário + VR)", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
-    col_dre2.metric("Lucro Líquido Operacional", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{margem_lucro:.1f}% Margem") # [VISUAL]
+    col_dre1.metric("Receita Bruta Total (Salário + VR)", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_dre2.metric("Lucro Líquido Operacional", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{margem_lucro:.1f}% Margem")
     
     reserva_acumulada_teorica = meta_reserva_efetiva * 6
     runway_meses = reserva_acumulada_teorica / total_fixos_a if total_fixos_a > 0 else 0
@@ -989,7 +1095,7 @@ with tab5:
     if not df_variaveis.empty:
         df_cat_analise = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
         maior_gasto = df_cat_analise.loc[df_cat_analise["valor"].idxmax()]
-        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável, impactando diretamente o seu potencial de lucro.".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável, impactando diretamente o seu potencial de lucro.".replace('.', '#').replace(',', '.').replace('#', ','))
     else:
         st.success("🟢 Nenhuma distorção crítica identificada nas despesas variáveis até o momento.")
 
