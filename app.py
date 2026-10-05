@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Invest Control Pro - Sistema de Gestão Financeira",
-    page_icon="🛡️️",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -176,16 +176,18 @@ def carregar_despesas_variaveis():
     return pd.DataFrame(columns=["id", "data", "descricao", "categoria", "valor"])
 
 def adicionar_despesa_variavel(data, descricao, categoria, valor):
+    """Função corrigida para garantir conversão correta de data e tipos para o Supabase"""
     if supabase:
         try:
+            data_formatada = str(data) if hasattr(data, "strftime") else data
             supabase.table("despesas_variaveis").insert({
-                "data": str(data),
-                "descricao": descricao,
-                "categoria": categoria,
-                "valor": valor
+                "data": data_formatada,
+                "descricao": str(descricao).strip(),
+                "categoria": str(categoria).strip(),
+                "valor": float(valor)
             }).execute()
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Erro ao salvar no banco de dados: {e}")
 
 def remover_despesa_variavel(despesa_id):
     if supabase:
@@ -288,7 +290,7 @@ with tab1:
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_right:
-        st.subheader("🛡️ Meta de Reserva de Emergência (6 Meses)")
+        st.subheader("🛡️️ Meta de Reserva de Emergência (6 Meses)")
         meta_6_meses = total_fixos_a * 6
         st.write(f"**Custo de Vida Essencial Mensal:** R$ {total_fixos_a:,.2f}")
         st.write(f"**Meta Ideal de 6 Meses:** R$ {meta_6_meses:,.2f}")
@@ -318,6 +320,7 @@ with tab2:
             if st.form_submit_button("Lançar Despesa"):
                 if desc_exp:
                     adicionar_despesa_variavel(data_exp, desc_exp, cat_exp, val_exp)
+                    st.success("Despesa lançada com sucesso!")
                     st.rerun()
                 else:
                     st.error("Informe uma descrição.")
