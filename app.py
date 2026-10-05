@@ -55,7 +55,7 @@ if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
 # -----------------------------------------------------------------------------
-# TELA DE LOGIN COM PROJEÇÃO ECONÔMICA
+# TELA DE LOGIN COM PROJEÇÃO ECONÔMICA (EXCLUSIVAMENTE CREDENCIAIS)
 # -----------------------------------------------------------------------------
 if not st.session_state['autenticado']:
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
@@ -67,28 +67,22 @@ if not st.session_state['autenticado']:
         
         with st.form("form_login"):
             st.markdown("### Credenciais de Acesso")
-            usuario = st.text_input("Usuário / Credencial Federal", placeholder="Digite seu usuário...")
+            usuario = st.text_input("Usuário / Credencial", placeholder="Digite seu usuário...")
             senha = st.text_input("Senha de Acesso", type="password", placeholder="Digite sua senha...")
             
             st.markdown("---")
-            col_b1, col_b2 = st.columns(2)
-            btn_entrar = col_b1.form_submit_button("Acessar Sistema", use_container_width=True)
-            btn_demo = col_b2.form_submit_button("Entrar (Demo Rápida)", use_container_width=True)
+            btn_entrar = st.form_submit_button("Acessar Sistema", use_container_width=True)
             
             if btn_entrar:
-                # Validação de exemplo (pode ser ajustada conforme sua preferência)
+                # Validação de credenciais estritas
                 if usuario == "admin" and senha == "admin123":
                     st.session_state['autenticado'] = True
                     st.success("Acesso autorizado com sucesso!")
                     st.rerun()
                 else:
-                    st.error("❌ Credenciais inválidas. Tente 'admin' / 'admin123' ou clique em Demo Rápida.")
-            
-            if btn_demo:
-                st.session_state['autenticado'] = True
-                st.rerun()
+                    st.error("❌ Credenciais inválidas. Acesso restrito.")
                 
-        st.info("💡 **Dica de Projeção Econômica:** Este ambiente protege seus dados contra oscilações de parceiros e automatiza sua meta de reserva de emergência em 6 meses.")
+        st.info("💡 **Segurança Ativa:** Ambiente protegido contra oscilações e acessos não autorizados.")
         st.stop()
 
 # -----------------------------------------------------------------------------
@@ -103,14 +97,13 @@ def init_supabase() -> Client:
         url = st.sidebar.text_input("Supabase URL", type="default")
         key = st.sidebar.text_input("Supabase API Key (Anon)", type="password")
         if not url or not key:
-            # Retorna None caso queira rodar localmente sem travar a UI
             return None
     return create_client(url, key) if url and key else None
 
 supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
-# FUNÇÕES DE MANIPULAÇÃO DE DADOS (COM FALLBACK LOCAL SE SUPABASE ESTIVER VAZIO)
+# FUNÇÕES DE MANIPULAÇÃO DE DADOS
 # -----------------------------------------------------------------------------
 def carregar_configuracoes():
     if supabase:
@@ -149,7 +142,6 @@ def carregar_gastos_fixos():
                 return pd.DataFrame(res.data)
         except:
             pass
-    # Fallback local com seus dados reais
     return pd.DataFrame([
         {"id": 1, "descricao": "Internet", "valor": 100.0},
         {"id": 2, "descricao": "Recarga celular", "valor": 30.0},
@@ -268,4 +260,9 @@ saldo_caixa_restante = saldo_para_variaveis - total_gastos_variaveis
 
 # -----------------------------------------------------------------------------
 # CORPO PRINCIPAL DO APLICATIVO
-#
+# -----------------------------------------------------------------------------
+st.title("📊 Painel de Projeção Econômica & Controle")
+st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:.2f}")
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Salário Líquido (A)", f"R$ {salario_a_input
