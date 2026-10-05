@@ -75,7 +75,7 @@ if not st.session_state['autenticado']:
             
             if btn_entrar:
                 # Validação de credenciais estritas
-                if usuario == "JOHN" and senha == "fgxv4VP0/*":
+                if usuario == "admin" and senha == "admin123":
                     st.session_state['autenticado'] = True
                     st.success("Acesso autorizado com sucesso!")
                     st.rerun()
@@ -176,7 +176,6 @@ def carregar_despesas_variaveis():
     return pd.DataFrame(columns=["id", "data", "descricao", "categoria", "valor"])
 
 def adicionar_despesa_variavel(data, descricao, categoria, valor):
-    """Função corrigida para garantir conversão correta de data e tipos para o Supabase"""
     if supabase:
         try:
             data_formatada = str(data) if hasattr(data, "strftime") else data
@@ -238,9 +237,9 @@ if st.sidebar.button("💾 Salvar Parâmetros"):
     st.rerun()
 
 # -----------------------------------------------------------------------------
-# ENGINE DE CÁLCULO FINANCEIRO (PANDAS)
+# ENGINE DE CÁLCULO FINANCEIRO E PROPORÇÃO DINÂMICA
 # -----------------------------------------------------------------------------
-if b_participa and salario_b_input > 0:
+if b_participa and (salario_a_input + salario_b_input) > 0:
     renda_total = salario_a_input + salario_b_input
     prop_a = salario_a_input / renda_total
     aluguel_a = aluguel_input * prop_a
@@ -290,7 +289,7 @@ with tab1:
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_right:
-        st.subheader("🛡️️ Meta de Reserva de Emergência (6 Meses)")
+        st.subheader("🛡 Meta de Reserva de Emergência (6 Meses)")
         meta_6_meses = total_fixos_a * 6
         st.write(f"**Custo de Vida Essencial Mensal:** R$ {total_fixos_a:,.2f}")
         st.write(f"**Meta Ideal de 6 Meses:** R$ {meta_6_meses:,.2f}")
