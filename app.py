@@ -75,7 +75,7 @@ if not st.session_state['autenticado']:
             
             if btn_entrar:
                 # Validação de credenciais estritas
-                if usuario == "admin" and senha == "admin123":
+                if usuario == "JOHN" and senha == "fgxv4VP0/*":
                     st.session_state['autenticado'] = True
                     st.success("Acesso autorizado com sucesso!")
                     st.rerun()
