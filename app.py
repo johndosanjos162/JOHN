@@ -2,7 +2,14 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+from io import BytesIO
 from supabase import create_client, Client
+
+# Importações do ReportLab para geração do PDF
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # -----------------------------------------------------------------------------
 # CONFIGURAÇÃO DA PÁGINA
@@ -86,7 +93,6 @@ if not st.session_state['autenticado']:
             btn_entrar = st.form_submit_button("Acessar Sistema", use_container_width=True)
             
             if btn_entrar:
-                # Validação de credenciais estritas
                 if usuario == "admin" and senha == "admin123":
                     st.session_state['autenticado'] = True
                     st.success("Acesso autorizado com sucesso!")
@@ -208,6 +214,101 @@ def remover_despesa_variavel(despesa_id):
             pass
 
 # -----------------------------------------------------------------------------
+# FUNÇÃO GERADORA DE RELATÓRIO PDF (SEPARADO POR GASTOS E PERDAS)
+# -----------------------------------------------------------------------------
+def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a, aluguel_b):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    story = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor('#1E3A8A'),
+        spaceAfter=12,
+        alignment=1
+    )
+    heading_style = ParagraphStyle(
+        'HeadingStyle',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor('#0F172A'),
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    normal_style = styles['Normal']
+
+    # Título do Relatório
+    story.append(Paragraph("<b>INVEST CONTROL PRO - RELATÓRIO FINANCEIRO</b>", title_style))
+    story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('Sub', parent=normal_style, alignment=1, textColor=colors.gray)))
+    story.append(Spacer(1, 15))
+
+    # Resumo Geral
+    story.append(Paragraph("<b>1. Resumo de Rendas e Contribuições</b>", heading_style))
+    resumo_data = [
+        ["Descrição", "Valor (R$)"],
+        ["Salário Pessoa A", f"R$ {salario_a:,.2f}"],
+        ["Salário Pessoa B", f"R$ {salario_b:,.2f}"],
+        ["Aluguel Proporcional (A)", f"R$ {aluguel_a:,.2f}"],
+        ["Aluguel Proporcional (B)", f"R$ {aluguel_b:,.2f}"]
+    ]
+    t_resumo = Table(resumo_data, colWidths=[250, 200])
+    t_resumo.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#38BDF8')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+    ]))
+    story.append(t_resumo)
+    story.append(Spacer(1, 15))
+
+    # Seção de Gastos Fixos
+    story.append(Paragraph("<b>2. Relatório de Custos e Gastos Fixos</b>", heading_style))
+    if not df_fixos.empty:
+        fixos_data = [["Descrição do Gasto", "Valor Mensal (R$)"]]
+        for _, row in df_fixos.iterrows():
+            fixos_data.append([str(row['descricao']), f"R$ {float(row['valor']):,.2f}"])
+        
+        t_fixos = Table(fixos_data, colWidths=[250, 200])
+        t_fixos.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+        ]))
+        story.append(t_fixos)
+    else:
+        story.append(Paragraph("Nenhum gasto fixo cadastrado.", normal_style))
+    story.append(Spacer(1, 15))
+
+    # Seção de Despesas Variáveis / Perdas / Saídas de Caixa
+    story.append(Paragraph("<b>3. Relatório de Despesas Variáveis (Perdas e Saídas de Caixa)</b>", heading_style))
+    if not df_variaveis.empty:
+        var_data = [["Data", "Descrição", "Categoria", "Valor (R$)"]]
+        for _, row in df_variaveis.iterrows():
+            data_str = row['data'].strftime('%d/%m/%Y') if pd.notnull(row['data']) else ""
+            var_data.append([data_str, str(row['descricao']), str(row['categoria']), f"R$ {float(row['valor']):,.2f}"])
+        
+        t_vars = Table(var_data, colWidths=[80, 170, 110, 90])
+        t_vars.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+        ]))
+        story.append(t_vars)
+    else:
+        story.append(Paragraph("Nenhuma despesa variável registrada.", normal_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+# -----------------------------------------------------------------------------
 # INTERFACE DO USUÁRIO - SIDEBAR (CONFIGURAÇÕES E LOGOUT)
 # -----------------------------------------------------------------------------
 st.sidebar.title("⚙️ Parâmetros Financeiros")
@@ -243,7 +344,6 @@ else:
 
 meta_reserva_input = st.sidebar.number_input("Meta de Reserva Mensal (R$)", value=float(config["meta_reserva_mensal"]), step=50.0)
 
-# Opção de edição manual interativa do aluguel
 st.sidebar.divider()
 st.sidebar.subheader("✏ Edição Dinâmica do Aluguel")
 edicao_manual = st.sidebar.checkbox("Habilitar edição manual customizada", value=False)
@@ -263,7 +363,6 @@ if edicao_manual and b_participa:
             step=25.0
         )
         aluguel_b_input = max(0.0, aluguel_input - aluguel_a_input)
-        st.sidebar.info(f"💡 Valor de B ajustado automaticamente: **R$ {aluguel_b_input:,.2f}**")
     else:
         aluguel_b_input = st.sidebar.number_input(
             "Valor pago por B (R$)", 
@@ -273,26 +372,11 @@ if edicao_manual and b_participa:
             step=25.0
         )
         aluguel_a_input = max(0.0, aluguel_input - aluguel_b_input)
-        st.sidebar.info(f"💡 Valor de A ajustado automaticamente: **R$ {aluguel_a_input:,.2f}**")
 
 if st.sidebar.button("💾 Salvar Parâmetros"):
     salvar_configuracoes(aluguel_input, salario_a_input, salario_b_input, vr_a_input, meta_reserva_input)
     st.sidebar.success("Parâmetros atualizados!")
     st.rerun()
-
-# --- NOVO RECURSO: EXPORTAÇÃO RÁPIDA DE DADOS NA SIDEBAR ---
-st.sidebar.divider()
-st.sidebar.subheader("📥 Exportação de Dados")
-df_vars_export = carregar_despesas_variaveis()
-if not df_vars_export.empty:
-    csv_data = df_vars_export.to_csv(index=False).encode('utf-8')
-    st.sidebar.download_button(
-        label="📄 Baixar Despesas (CSV)",
-        data=csv_data,
-        file_name=f"despesas_invest_control_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
 
 # -----------------------------------------------------------------------------
 # ENGINE DE CÁLCULO FINANCEIRO E PROPORÇÃO DINÂMICA
@@ -301,11 +385,8 @@ if b_participa:
     if edicao_manual and aluguel_a_input is not None and aluguel_b_input is not None:
         aluguel_a = aluguel_a_input
         aluguel_b = aluguel_b_input
-        if aluguel_input > 0:
-            prop_a = aluguel_a / aluguel_input
-            prop_b = aluguel_b / aluguel_input
-        else:
-            prop_a, prop_b = 0.5, 0.5
+        prop_a = aluguel_a / aluguel_input if aluguel_input > 0 else 0.5
+        prop_b = aluguel_b / aluguel_input if aluguel_input > 0 else 0.5
     else:
         if (salario_a_input + salario_b_input) > 0:
             renda_total = salario_a_input + salario_b_input
@@ -348,12 +429,12 @@ col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
 
 st.divider()
 
-# --- ADIÇÃO DA NOVA ABA DE SIMULAÇÃO DE INVESTIMENTOS ---
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📌 Planejamento & Cenários", 
     "💳 Controle de Gastos Diários", 
     "⚙ Gerenciar Custos Fixos", 
-    "📈 Simulador de Investimentos"
+    "📈 Simulador de Investimentos",
+    "📑 Relatórios PDF"
 ])
 
 with tab1:
@@ -391,7 +472,6 @@ with tab1:
         st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}")
         
         st.markdown("##### 🗓️ Clique nos meses concluídos:")
-        
         cols_grid = st.columns(4)
         meses_concluidos_count = 0
         
@@ -410,9 +490,6 @@ with tab1:
         st.progress(pct_concluido)
         st.markdown(f"**Progresso Anual:** {meses_concluidos_count} de 12 meses concluídos (**{pct_concluido * 100:.1f}%**)")
         st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**")
-        
-        if not b_participa:
-            st.warning("⚠️ **Atenção no Cenário Contingência:** Como você está assumindo o aluguel sozinho, o aporte foi reajustado para proteger seu caixa.")
 
 with tab2:
     st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
@@ -437,16 +514,6 @@ with tab2:
                 else:
                     st.error("Informe uma descrição.")
     
-    # --- NOVO RECURSO: ANÁLISE DE GASTOS POR CATEGORIA (GRÁFICO) ---
-    if not df_variaveis.empty:
-        st.markdown("---")
-        st.markdown("##### 📊 Gastos Variáveis por Categoria")
-        df_cat = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
-        fig_cat = px.bar(df_cat, x="categoria", y="valor", text_auto=".2f", color="categoria", title="Distribuição de Despesas por Categoria")
-        fig_cat.update_layout(showlegend=False, xaxis_title="Categoria", yaxis_title="Valor Gasto (R$)")
-        st.plotly_chart(fig_cat, use_container_width=True)
-        st.markdown("---")
-
     if not df_variaveis.empty:
         for idx, row in df_variaveis.iterrows():
             c1, c2, c3, c4, c5 = st.columns([2, 3, 2, 2, 1])
@@ -480,11 +547,8 @@ with tab3:
                     adicionar_gasto_fixo(desc_fix, val_fix)
                     st.rerun()
 
-# --- NOVO RECURSO: ABA DE SIMULADOR DE JUROS COMPOSTOS E PATRIMÔNIO ---
 with tab4:
     st.subheader("📈 Simulador de Crescimento Patrimonial (Juros Compostos)")
-    st.caption("Projete o acúmulo da sua reserva de emergência e investimentos ao longo dos anos com base no aporte mensal.")
-
     col_sim1, col_sim2 = st.columns(2)
     with col_sim1:
         aporte_sim = st.number_input("Aporte Mensal Utilizado (R$)", value=float(meta_reserva_efetiva), step=50.0)
@@ -492,7 +556,6 @@ with tab4:
     with col_sim2:
         taxa_anual_sim = st.slider("Rentabilidade Anual Estimada (%)", min_value=1.0, max_value=20.0, value=10.0, step=0.5)
 
-    # Cálculo dos juros compostos mês a mês
     taxa_mensal = (1 + taxa_anual_sim / 100) ** (1 / 12) - 1
     meses_total = anos_sim * 12
     
@@ -513,19 +576,27 @@ with tab4:
 
     if lista_projecao:
         df_proj = pd.DataFrame(lista_projecao)
-        
         col_res1, col_res2, col_res3 = st.columns(3)
         col_res1.metric("Valor Total Acumulado", f"R$ {montante_atual:,.2f}")
         col_res2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}")
         col_res3.metric("Rendimento (Juros)", f"R$ {(montante_atual - total_investido):,.2f}")
-
         st.divider()
-
-        fig_invest = px.area(
-            df_proj, 
-            x="Ano", 
-            y=["Patrimônio Total", "Total Investido"],
-            labels={"value": "Valor em Reais (R$)", "variable": "Legenda"},
-            title="Evolução Patrimonial Projetada"
-        )
+        fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
         st.plotly_chart(fig_invest, use_container_width=True)
+
+# --- ABA 5: RELATÓRIOS PDF SEPARADOS POR GASTOS E PERDAS ---
+with tab5:
+    st.subheader("📑 Central de Relatórios em PDF")
+    st.markdown("Gere relatórios executivos em PDF com divisão exata entre **Gastos Fixos** e **Despesas Variáveis / Perdas**.")
+    
+    pdf_bytes = gerar_relatorio_pdf(df_gastos_fixos, df_variaveis, salario_a_input, salario_b_input, aluguel_a, aluguel_b)
+    
+    st.download_button(
+        label="📥 Baixar Relatório Completo em PDF (Gastos e Perdas Divididos)",
+        data=pdf_bytes,
+        file_name=f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    
+    st.info("💡 O documento gerado possui seções customizadas separando claramente as entradas, os custos fixos estruturais e as perdas/saídas variáveis registradas no mês.")
