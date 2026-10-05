@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Invest Control Pro - Sistema de Gestão Financeira",
-    page_icon="🛡️",
+    page_icon="🛡️️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -242,10 +242,14 @@ if st.sidebar.button("💾 Salvar Parâmetros"):
 if b_participa and (salario_a_input + salario_b_input) > 0:
     renda_total = salario_a_input + salario_b_input
     prop_a = salario_a_input / renda_total
+    prop_b = salario_b_input / renda_total
     aluguel_a = aluguel_input * prop_a
+    aluguel_b = aluguel_input * prop_b
 else:
     prop_a = 1.0
+    prop_b = 0.0
     aluguel_a = aluguel_input
+    aluguel_b = 0.0
 
 df_gastos_fixos = carregar_gastos_fixos()
 total_outros_fixos_a = df_gastos_fixos["valor"].sum() if not df_gastos_fixos.empty else 0.0
@@ -276,6 +280,22 @@ st.divider()
 tab1, tab2, tab3 = st.tabs(["📌 Planejamento & Cenários", "💳 Controle de Gastos Diários", "⚙️ Gerenciar Custos Fixos"])
 
 with tab1:
+    # Nova seção destacada para exibição clara da proporção e valores de A e B
+    st.subheader("🏠 Divisão Proporcional do Aluguel (A e B)")
+    col_div1, col_div2, col_div3 = st.columns(3)
+    col_div1.metric("Salário de A", f"R$ {salario_a_input:,.2f}", delta=f"{prop_a*100:.1f}% do total")
+    col_div2.metric("Salário de B", f"R$ {salario_b_input:,.2f}" if b_participa else "R$ 0,00", delta=f"{prop_b*100:.1f}% do total" if b_participa else "Inativo")
+    col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}")
+
+    col_val1, col_val2 = st.columns(2)
+    col_val1.info(f"👤 **Parte que a Pessoa A deve pagar:** R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do aluguel)")
+    if b_participa:
+        col_val2.success(f"👥 **Parte que a Pessoa B deve pagar:** R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do aluguel)")
+    else:
+        col_val2.warning("⚠️ **Pessoa B:** Sem participação neste cenário (A assume 100%).")
+
+    st.divider()
+
     col_left, col_right = st.columns([1, 1])
     
     with col_left:
@@ -315,44 +335,4 @@ with tab2:
             data_exp = f_col1.date_input("Data")
             desc_exp = f_col2.text_input("Descrição")
             cat_exp = f_col3.selectbox("Categoria", ["Lazer / Passeios", "Farmácia / Saúde", "Vestuário", "Imprevistos", "Outros"])
-            val_exp = f_col4.number_input("Valor (R$)", min_value=0.01, step=10.0)
-            if st.form_submit_button("Lançar Despesa"):
-                if desc_exp:
-                    adicionar_despesa_variavel(data_exp, desc_exp, cat_exp, val_exp)
-                    st.success("Despesa lançada com sucesso!")
-                    st.rerun()
-                else:
-                    st.error("Informe uma descrição.")
-    
-    if not df_variaveis.empty:
-        for idx, row in df_variaveis.iterrows():
-            c1, c2, c3, c4, c5 = st.columns([2, 3, 2, 2, 1])
-            c1.write(row["data"].strftime("%d/%m/%Y"))
-            c2.write(row["descricao"])
-            c3.write(row["categoria"])
-            c4.write(f"R$ {row['valor']:,.2f}")
-            if c5.button("🗑️", key=f"del_var_{row['id']}"):
-                remover_despesa_variavel(row["id"])
-                st.rerun()
-
-with tab3:
-    st.subheader("📋 Tabela de Custos Fixos de A")
-    col_f1, col_f2 = st.columns([2, 1])
-    with col_f1:
-        if not df_gastos_fixos.empty:
-            for idx, row in df_gastos_fixos.iterrows():
-                cf1, cf2, cf3 = st.columns([3, 2, 1])
-                cf1.write(f"**{row['descricao']}**")
-                cf2.write(f"R$ {row['valor']:,.2f}")
-                if cf3.button("Excluir", key=f"del_fix_{row['id']}"):
-                    remover_gasto_fixo(row["id"])
-                    st.rerun()
-    with col_f2:
-        st.write("#### Adicionar Novo Gasto Fixo")
-        with st.form("form_fixo", clear_on_submit=True):
-            desc_fix = st.text_input("Descrição do Gasto")
-            val_fix = st.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0)
-            if st.form_submit_button("Cadastrar Gasto Fixo"):
-                if desc_fix:
-                    adicionar_gasto_fixo(desc_fix, val_fix)
-                    st.rerun()
+            val_exp = f_col4.number
