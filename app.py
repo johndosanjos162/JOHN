@@ -22,108 +22,99 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# PALETA DE CORES E DESIGN SYSTEM (TECNOLÓGICO / CYBERPUNK SÓBRIO)
+# BLOCO DE ESTILO SEPARADO - PALETA DARK PREMIUM & COMPONENTES [VISUAL]
 # -----------------------------------------------------------------------------
 PALETA = {
-    "fundo_principal":  "#0A0E17",   # preto tecnológico
-    "fundo_secundario": "#111827",   # cinza-azulado escuro
-    "fundo_card":       "#161B22",   # painel dos cards
-    "borda":            "#1F2937",   # borda fina dos painéis
-    "acento_ciano":     "#00E5FF",   # cor principal (números, títulos)
-    "acento_neon":      "#39FF14",   # destaque positivo
-    "acento_roxo":      "#7C3AED",   # secundário / hover
-    "acento_vermelho":  "#FF3B5C",   # alertas
-    "texto_principal":  "#E6EDF3",   # texto claro (nunca branco puro)
-    "texto_secundario": "#8B949E",   # legendas
+    "fundo_principal":  "#0B0F14",   # Fundo dark geral
+    "fundo_card":       "#151B23",   # Painéis e cards
+    "borda":            "#232B36",   # Borda fina dos painéis
+    "acento_azul":      "#3B82F6",   # Acento geral e item ativo
+    "verde_positivo":   "#22C55E",   # Entradas / Saldo positivo
+    "vermelho_negativo":"#EF4444",   # Saídas / Saldo negativo
+    "amarelo_pendente": "#F59E0B",   # Pendentes / Alertas
+    "texto_principal":  "#E6EDF3",   # Texto claro
+    "texto_secundario": "#8B949E",   # Legendas e rótulos
+    "hover_tabela":     "#1C242E",   # Hover de linhas
 }
 
-# -----------------------------------------------------------------------------
-# ESTILIZAÇÃO CSS CUSTOMIZADA & APLICAÇÃO VISUAL [VISUAL]
-# -----------------------------------------------------------------------------
+FONTES = {
+    "titulo":     ("Segoe UI Semibold", 20),
+    "subtitulo":  ("Segoe UI", 14),
+    "corpo":      ("Segoe UI", 11),
+    "numero":     ("Consolas", 32, "bold"),
+    "legenda":    ("Segoe UI", 9),
+}
+
 st.markdown(f"""
 <style>
-    /* Fundo geral da aplicação */
+    /* [VISUAL] Fundo geral do aplicativo */
     .stApp {{
         background-color: {PALETA["fundo_principal"]};
         color: {PALETA["texto_principal"]};
-        font-family: 'Segoe UI', 'Inter', sans-serif;
+        font-family: 'Segoe UI', sans-serif;
     }}
 
-    /* Container de Login */
-    .login-container {{
-        background: linear-gradient(135deg, {PALETA["fundo_secundario"]} 0%, {PALETA["fundo_card"]} 100%);
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        color: {PALETA["texto_principal"]};
-        border: 1px solid {PALETA["borda"]};
-    }}
-    .login-title {{
-        font-size: 26px;
-        font-weight: 700;
-        color: {PALETA["acento_ciano"]};
-        margin-bottom: 8px;
-        text-align: center;
-        letter-spacing: 0.5px;
-    }}
-    .login-subtitle {{
-        font-size: 13px;
-        color: {PALETA["texto_secundario"]};
-        text-align: center;
-        margin-bottom: 24px;
-    }}
-
-    /* Cards e Painéis modernos */
+    /* [VISUAL] Cards e Painéis */
     div[data-testid="stMetric"] {{
         background-color: {PALETA["fundo_card"]};
         border: 1px solid {PALETA["borda"]};
-        padding: 16px 20px;
         border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }}
     div[data-testid="stMetric"] label {{
         color: {PALETA["texto_secundario"]} !important;
-        font-size: 11px !important;
+        font-size: 12px !important;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
     }}
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
-        color: {PALETA["acento_ciano"]} !important;
-        font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+        color: {PALETA["acento_azul"]} !important;
+        font-family: 'Consolas', monospace !important;
         font-size: 28px !important;
         font-weight: bold !important;
     }}
 
-    /* Botões arredondados com transição e hover roxo/ciano */
-    .stButton button {{
-        background-color: {PALETA["fundo_secundario"]} !important;
-        color: {PALETA["texto_principal"]} !important;
-        border: 1px solid {PALETA["borda"]} !important;
-        border-radius: 10px !important;
-        padding: 8px 16px;
-        font-weight: 600;
-        transition: all 0.2s ease-in-out;
-    }}
-    .stButton button:hover {{
-        background-color: {PALETA["acento_roxo"]} !important;
-        border-color: {PALETA["acento_ciano"]} !important;
-        box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
-        color: #FFFFFF !important;
-    }}
-
-    /* Sidebar customizada */
+    /* [VISUAL] Sidebar escura com item ativo em azul */
     section[data-testid="stSidebar"] {{
-        background-color: {PALETA["fundo_secundario"]};
+        background-color: {PALETA["fundo_card"]};
         border-right: 1px solid {PALETA["borda"]};
     }}
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{
-        color: {PALETA["acento_ciano"]} !important;
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label[data-baseweb="radio"] input:checked + div {{
+        background-color: {PALETA["acento_azul"]} !important;
     }}
 
-    /* Títulos principais da página */
-    h1, h2, h3 {{
+    /* [VISUAL] Botões padrão */
+    .stButton button {{
+        background-color: {PALETA["fundo_card"]} !important;
         color: {PALETA["texto_principal"]} !important;
-        font-family: 'Segoe UI Semibold', sans-serif;
+        border: 1px solid {PALETA["borda"]} !important;
+        border-radius: 12px !important;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }}
+    .stButton button:hover {{
+        border-color: {PALETA["acento_azul"]} !important;
+        background-color: {PALETA["hover_tabela"]} !important;
+    }}
+
+    /* [VISUAL] Tabelas com linhas alternadas e hover */
+    dataframe, table {{
+        background-color: {PALETA["fundo_card"]} !important;
+        border-radius: 12px;
+        border: 1px solid {PALETA["borda"]};
+    }}
+    tr:nth-child(even) {{
+        background-color: rgba(35, 43, 54, 0.3);
+    }}
+    tr:hover {{
+        background-color: {PALETA["hover_tabela"]} !important;
+    }}
+
+    /* [VISUAL] Tipografia de títulos e subtítulos */
+    h1, h2, h3, h4 {{
+        font-family: 'Segoe UI', sans-serif;
+        color: {PALETA["texto_principal"]} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -134,7 +125,6 @@ st.markdown(f"""
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
-# Inicialização do estado dos 12 meses da meta de reserva (Chaves booleanas)
 meses_nomes = [
     "Janeiro", "Fevereiro", "Março", "Abril", 
     "Maio", "Junho", "Julho", "Agosto", 
@@ -146,15 +136,15 @@ for i, m in enumerate(meses_nomes):
         st.session_state[key_nome] = False
 
 # -----------------------------------------------------------------------------
-# TELA DE LOGIN COM PROJEÇÃO ECONÔMICA (EXCLUSIVAMENTE CREDENCIAIS)
+# TELA DE LOGIN
 # -----------------------------------------------------------------------------
 if not st.session_state['autenticado']:
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
     
     with col_l2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown('<div class="login-title">🛡️ INVEST CONTROL PRO</div>', unsafe_allow_html=True)
-        st.markdown('<div class="login-subtitle">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-title" style="font-size:28px; font-weight:700; color:#3B82F6; text-align:center; margin-bottom:10px;">🛡️ INVEST CONTROL PRO</div>', unsafe_allow_html=True) # [VISUAL]
+        st.markdown('<div class="login-subtitle" style="font-size:14px; color:#8B949E; text-align:center; margin-bottom:30px;">Sistema Integrado de Projeção Econômica & Acesso Seguro</div>', unsafe_allow_html=True) # [VISUAL]
         
         with st.form("form_login"):
             st.markdown("### Credenciais de Acesso")
@@ -301,15 +291,15 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
-        'TitleStyle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#1E3A8A'), spaceAfter=12, alignment=1
+        'TitleStyle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#3B82F6'), spaceAfter=12, alignment=1
     )
     heading_style = ParagraphStyle(
-        'HeadingStyle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#0F172A'), spaceBefore=12, spaceAfter=6
+        'HeadingStyle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#E6EDF3'), spaceBefore=12, spaceAfter=6
     )
     normal_style = styles['Normal']
 
     story.append(Paragraph("<b>INVEST CONTROL PRO - RELATÓRIO FINANCEIRO</b>", title_style))
-    story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('Sub', parent=normal_style, alignment=1, textColor=colors.gray)))
+    story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('Sub', parent=normal_style, alignment=1, textColor=colors.HexColor('#8B949E'))))
     story.append(Spacer(1, 15))
 
     story.append(Paragraph("<b>1. Resumo de Rendas e Contribuições</b>", heading_style))
@@ -322,12 +312,12 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
     ]
     t_resumo = Table(resumo_data, colWidths=[250, 200])
     t_resumo.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#38BDF8')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#151B23')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#E6EDF3')),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36'))
     ]))
     story.append(t_resumo)
     story.append(Spacer(1, 15))
@@ -339,10 +329,10 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
             fixos_data.append([str(row['descricao']), f"R$ {float(row['valor']):,.2f}"])
         t_fixos = Table(fixos_data, colWidths=[250, 200])
         t_fixos.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#151B23')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#E6EDF3')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36'))
         ]))
         story.append(t_fixos)
     else:
@@ -360,7 +350,7 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1'))
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36'))
         ]))
         story.append(t_vars)
     else:
@@ -493,17 +483,17 @@ saldo_caixa_restante = saldo_para_variaveis - total_gastos_variaveis
 # CORPO PRINCIPAL DO APLICATIVO
 # -----------------------------------------------------------------------------
 st.title("📊 Painel de Projeção Econômica & Controle")
-st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:.2f}")
+st.caption(f"Cenário Ativo: **{cenario}** | Alimentação protegida com VR de R$ {vr_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Formato BR
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Salário Líquido (A)", f"R$ {salario_a_input:,.2f}")
-col2.metric("Sua Parte no Aluguel", f"R$ {aluguel_a:,.2f}", delta=f"{prop_a*100:.1f}% do aluguel" if b_participa else "100% (Integral)")
-col3.metric("Total Gastos Fixos (A)", f"R$ {total_fixos_a:,.2f}")
-col4.metric("Aporte Reserva Mensal", f"R$ {meta_reserva_efetiva:,.2f}")
+col1.metric("Salário Líquido (A)", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal e formato BR
+col2.metric("Sua Parte no Aluguel", f"- R$ {aluguel_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{prop_a*100:.1f}% do aluguel" if b_participa else "100% (Integral)") # [VISUAL] Sinal
+col3.metric("Total Gastos Fixos (A)", f"- R$ {total_fixos_a:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal
+col4.metric("Aporte Reserva Mensal", f"- R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL] Sinal
 
 st.divider()
 
-# ABAS DO APLICATIVO (INCLUINDO A NOVA ABA DE ANÁLISE DE LUCRO E DRE)
+# ABAS DO APLICATIVO
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📌 Planejamento & Cenários", 
     "💳 Controle de Gastos Diários", 
@@ -516,14 +506,14 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 with tab1:
     st.subheader("🏠 Divisão e Proporcionalidade do Aluguel (A e B)")
     col_div1, col_div2, col_div3 = st.columns(3)
-    col_div1.metric("Salário de A", f"R$ {salario_a_input:,.2f}")
-    col_div2.metric("Salário de B", f"R$ {salario_b_input:,.2f}" if b_participa else "R$ 0,00")
-    col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}")
+    col_div1.metric("Salário de A", f"+ R$ {salario_a_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_div2.metric("Salário de B", f"+ R$ {salario_b_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',') if b_participa else "R$ 0,00") # [VISUAL]
+    col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
 
     col_val1, col_val2 = st.columns(2)
-    col_val1.info(f"👤 **Pessoa A vai pagar:** R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do valor total do aluguel)")
+    col_val1.info(f"👤 **Pessoa A vai pagar:** - R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
     if b_participa:
-        col_val2.success(f"👥 **Pessoa B vai pagar:** R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do valor total do aluguel)")
+        col_val2.success(f"👥 **Pessoa B vai pagar:** - R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
     else:
         col_val2.warning("⚠️ **Pessoa B:** Sem participação neste cenário (A assume 100%).")
 
@@ -539,15 +529,15 @@ with tab1:
         }
         df_comp = pd.DataFrame(dados_composicao)
         fig_pie = px.pie(df_comp, names="Categoria", values="Valor", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2)
+        fig_pie.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3") # [VISUAL]
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_right:
         st.subheader("🛡 Progresso Anual da Reserva de Emergência (12 Meses)")
-        meta_6_meses = total_fixos_a * 6
-        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}")
-        st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}")
+        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        st.write(f"**Meta Anual Acumulada (12 Meses de Aporte):** R$ {meta_reserva_efetiva * 12:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
         
-        st.markdown("##### 🗓️ Clique nos meses concluídos:")
+        st.markdown("##### 🗓️ Status de Pagamento dos Meses:") # [VISUAL] Status e badges
         cols_grid = st.columns(4)
         meses_concluidos_count = 0
         
@@ -558,6 +548,9 @@ with tab1:
                 status = st.checkbox(f"{i+1}. {nome_mes}", key=key_nome)
                 if status:
                     meses_concluidos_count += 1
+                    st.markdown("<span style='color:#22C55E; font-size:12px;'>● pago</span>", unsafe_allow_html=True) # [VISUAL] Badge ● pago
+                else:
+                    st.markdown("<span style='color:#F59E0B; font-size:12px;'>⏳ pendente</span>", unsafe_allow_html=True) # [VISUAL] Badge ⏳ pendente
                     
         pct_concluido = meses_concluidos_count / 12.0
         montante_acumulado_real = meta_reserva_efetiva * meses_concluidos_count
@@ -565,14 +558,14 @@ with tab1:
         st.markdown("---")
         st.progress(pct_concluido)
         st.markdown(f"**Progresso Anual:** {meses_concluidos_count} de 12 meses concluídos (**{pct_concluido * 100:.1f}%**)")
-        st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**")
+        st.write(f"Montante total depositado e confirmado: **R$ {montante_acumulado_real:,.2f}**".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
 
 with tab2:
     st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
     col_lim1, col_lim2, col_lim3 = st.columns(3)
-    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}")
-    col_lim2.metric("Total Já Gasto no Mês", f"R$ {total_gastos_variaveis:,.2f}")
-    col_lim3.metric("Saldo do Caixa Restante", f"R$ {saldo_caixa_restante:,.2f}", delta_color="normal" if saldo_caixa_restante >= 0 else "inverse")
+    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_lim2.metric("Total Já Gasto no Mês", f"- R$ {total_gastos_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_lim3.metric("Saldo do Caixa Restante", f"{'+' if saldo_caixa_restante >=0 else '-'} R$ {abs(saldo_caixa_restante):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_caixa_restante >= 0 else "inverse") # [VISUAL]
     st.divider()
     
     with st.expander("➕ Lançar Nova Despesa Variável", expanded=True):
@@ -596,7 +589,7 @@ with tab2:
             c1.write(row["data"].strftime("%d/%m/%Y"))
             c2.write(row["descricao"])
             c3.write(row["categoria"])
-            c4.write(f"R$ {row['valor']:,.2f}")
+            c4.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
             if c5.button("🗑️", key=f"del_var_{row['id']}"):
                 remover_despesa_variavel(row["id"])
                 st.rerun()
@@ -609,7 +602,7 @@ with tab3:
             for idx, row in df_gastos_fixos.iterrows():
                 cf1, cf2, cf3 = st.columns([3, 2, 1])
                 cf1.write(f"**{row['descricao']}**")
-                cf2.write(f"R$ {row['valor']:,.2f}")
+                cf2.write(f"- R$ {row['valor']:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
                 if cf3.button("Excluir", key=f"del_fix_{row['id']}"):
                     remover_gasto_fixo(row["id"])
                     st.rerun()
@@ -653,14 +646,14 @@ with tab4:
     if lista_projecao:
         df_proj = pd.DataFrame(lista_projecao)
         col_res1, col_res2, col_res3 = st.columns(3)
-        col_res1.metric("Valor Total Acumulado", f"R$ {montante_atual:,.2f}")
-        col_res2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}")
-        col_res3.metric("Rendimento (Juros)", f"R$ {(montante_atual - total_investido):,.2f}")
+        col_res1.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        col_res2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+        col_res3.metric("Rendimento (Juros)", f"+ R$ {(montante_atual - total_investido):,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
         st.divider()
         fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
+        fig_invest.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3") # [VISUAL]
         st.plotly_chart(fig_invest, use_container_width=True)
 
-# --- NOVA ABA 5: DRE GERENCIAL E ANÁLISE DE LUCRO ---
 with tab5:
     st.subheader("📊 DRE Gerencial & Análise de Lucratividade")
     st.markdown("Demonstração financeira estruturada para avaliar o seu **Lucro Operacional Líquido** e a **Margem de Lucro** mensal.")
@@ -672,23 +665,21 @@ with tab5:
     margem_lucro = (lucro_operacional / receita_bruta) * 100 if receita_bruta > 0 else 0.0
 
     col_dre1, col_dre2, col_dre3 = st.columns(3)
-    col_dre1.metric("Receita Bruta Total (Salário + VR)", f"R$ {receita_bruta:,.2f}")
-    col_dre2.metric("Lucro Líquido Operacional", f"R$ {lucro_operacional:,.2f}", delta=f"{margem_lucro:.1f}% Margem")
+    col_dre1.metric("Receita Bruta Total (Salário + VR)", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
+    col_dre2.metric("Lucro Líquido Operacional", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{margem_lucro:.1f}% Margem") # [VISUAL]
     
-    # Runway (Quantos meses se sustenta com a reserva acumulada teórica de 6 meses)
     reserva_acumulada_teorica = meta_reserva_efetiva * 6
     runway_meses = reserva_acumulada_teorica / total_fixos_a if total_fixos_a > 0 else 0
     col_dre3.metric("Runway de Segurança", f"{runway_meses:.1f} Meses", delta="Cobertura de Caixa")
 
     st.divider()
 
-    # Tabela DRE Estilizada
     dados_dre = [
         ["Conta / Indicador", "Valor (R$)", "% da Receita Bruta"],
-        ["(+) Receita Bruta (Salário + VR)", f"R$ {receita_bruta:,.2f}", "100.0%"],
-        ["(-) Custos Fixos (Aluguel + Fixos)", f"R$ {custos_fixos_dre:,.2f}", f"{(custos_fixos_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
-        ["(-) Despesas Variáveis / Saídas", f"R$ {despesas_var_dre:,.2f}", f"{(despesas_var_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
-        ["(=) LUCRO LÍQUIDO OPERACIONAL", f"R$ {lucro_operacional:,.2f}", f"{margem_lucro:.1f}%"]
+        ["(+) Receita Bruta (Salário + VR)", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), "100.0%"],
+        ["(-) Custos Fixos (Aluguel + Fixos)", f"- R$ {custos_fixos_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(custos_fixos_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(-) Despesas Variáveis / Saídas", f"- R$ {despesas_var_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(despesas_var_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(=) LUCRO LÍQUIDO OPERACIONAL", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{margem_lucro:.1f}%"]
     ]
     
     df_dre_tabela = pd.DataFrame(dados_dre[1:], columns=dados_dre[0])
@@ -698,7 +689,7 @@ with tab5:
     if not df_variaveis.empty:
         df_cat_analise = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
         maior_gasto = df_cat_analise.loc[df_cat_analise["valor"].idxmax()]
-        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável, impactando diretamente o seu potencial de lucro.")
+        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável, impactando diretamente o seu potencial de lucro.".replace('.', '#').replace(',', '.').replace('#', ',')) # [VISUAL]
     else:
         st.success("🟢 Nenhuma distorção crítica identificada nas despesas variáveis até o momento.")
 
