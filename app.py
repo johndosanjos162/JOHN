@@ -136,10 +136,13 @@ def carregar_configuracoes():
         "salario_a": 2700.0,
         "salario_b": 2000.0,
         "vr_a": 700.0,
-        "meta_reserva_mensal": 800.0
+        "meta_reserva_mensal": 800.0,
+        "aluguel_a_custom": 850.0,
+        "aluguel_b_custom": 850.0,
+        "usa_edicao_manual": False
     }
 
-def salvar_configuracoes(aluguel, salario_a, salario_b, vr_a, meta_reserva):
+def salvar_configuracoes(aluguel, salario_a, salario_b, vr_a, meta_reserva, aluguel_a_custom, aluguel_b_custom, usa_edicao):
     if supabase:
         try:
             supabase.table("configuracoes").update({
@@ -147,7 +150,10 @@ def salvar_configuracoes(aluguel, salario_a, salario_b, vr_a, meta_reserva):
                 "salario_a": salario_a,
                 "salario_b": salario_b,
                 "vr_a": vr_a,
-                "meta_reserva_mensal": meta_reserva
+                "meta_reserva_mensal": meta_reserva,
+                "aluguel_a_custom": aluguel_a_custom,
+                "aluguel_b_custom": aluguel_b_custom,
+                "usa_edicao_manual": usa_edicao
             }).eq("id", 1).execute()
         except:
             pass
@@ -223,29 +229,17 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
-        'TitleStyle',
-        parent=styles['Heading1'],
-        fontSize=18,
-        textColor=colors.HexColor('#1E3A8A'),
-        spaceAfter=12,
-        alignment=1
+        'TitleStyle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#1E3A8A'), spaceAfter=12, alignment=1
     )
     heading_style = ParagraphStyle(
-        'HeadingStyle',
-        parent=styles['Heading2'],
-        fontSize=12,
-        textColor=colors.HexColor('#0F172A'),
-        spaceBefore=12,
-        spaceAfter=6
+        'HeadingStyle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#0F172A'), spaceBefore=12, spaceAfter=6
     )
     normal_style = styles['Normal']
 
-    # Título do Relatório
     story.append(Paragraph("<b>INVEST CONTROL PRO - RELATÓRIO FINANCEIRO</b>", title_style))
     story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('Sub', parent=normal_style, alignment=1, textColor=colors.gray)))
     story.append(Spacer(1, 15))
 
-    # Resumo Geral
     story.append(Paragraph("<b>1. Resumo de Rendas e Contribuições</b>", heading_style))
     resumo_data = [
         ["Descrição", "Valor (R$)"],
@@ -266,13 +260,11 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
     story.append(t_resumo)
     story.append(Spacer(1, 15))
 
-    # Seção de Gastos Fixos
     story.append(Paragraph("<b>2. Relatório de Custos e Gastos Fixos</b>", heading_style))
     if not df_fixos.empty:
         fixos_data = [["Descrição do Gasto", "Valor Mensal (R$)"]]
         for _, row in df_fixos.iterrows():
             fixos_data.append([str(row['descricao']), f"R$ {float(row['valor']):,.2f}"])
-        
         t_fixos = Table(fixos_data, colWidths=[250, 200])
         t_fixos.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
@@ -285,14 +277,12 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
         story.append(Paragraph("Nenhum gasto fixo cadastrado.", normal_style))
     story.append(Spacer(1, 15))
 
-    # Seção de Despesas Variáveis / Perdas / Saídas de Caixa
     story.append(Paragraph("<b>3. Relatório de Despesas Variáveis (Perdas e Saídas de Caixa)</b>", heading_style))
     if not df_variaveis.empty:
         var_data = [["Data", "Descrição", "Categoria", "Valor (R$)"]]
         for _, row in df_variaveis.iterrows():
             data_str = row['data'].strftime('%d/%m/%Y') if pd.notnull(row['data']) else ""
             var_data.append([data_str, str(row['descricao']), str(row['categoria']), f"R$ {float(row['valor']):,.2f}"])
-        
         t_vars = Table(var_data, colWidths=[80, 170, 110, 90])
         t_vars.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
@@ -344,12 +334,17 @@ else:
 
 meta_reserva_input = st.sidebar.number_input("Meta de Reserva Mensal (R$)", value=float(config["meta_reserva_mensal"]), step=50.0)
 
+# Opção de edição manual interativa do aluguel (Salva na Base de Dados)
 st.sidebar.divider()
 st.sidebar.subheader("✏ Edição Dinâmica do Aluguel")
-edicao_manual = st.sidebar.checkbox("Habilitar edição manual customizada", value=False)
+edicao_manual_default = bool(config.get("usa_edicao_manual", False))
+edicao_manual = st.sidebar.checkbox("Habilitar edição manual customizada", value=edicao_manual_default)
 
 aluguel_a_input = None
 aluguel_b_input = None
+
+val_a_db = float(config.get("aluguel_a_custom", aluguel_input * 0.5))
+val_b_db = float(config.get("aluguel_b_custom", aluguel_input * 0.5))
 
 if edicao_manual and b_participa:
     quem_edita = st.sidebar.radio("Quem você deseja ajustar?", options=["Pessoa A", "Pessoa B"], index=0)
@@ -359,23 +354,30 @@ if edicao_manual and b_participa:
             "Valor pago por A (R$)", 
             min_value=0.0, 
             max_value=float(aluguel_input), 
-            value=float(aluguel_input * 0.5), 
+            value=val_a_db, 
             step=25.0
         )
         aluguel_b_input = max(0.0, aluguel_input - aluguel_a_input)
+        st.sidebar.info(f"💡 Valor de B ajustado automaticamente: **R$ {aluguel_b_input:,.2f}**")
     else:
         aluguel_b_input = st.sidebar.number_input(
             "Valor pago por B (R$)", 
             min_value=0.0, 
             max_value=float(aluguel_input), 
-            value=float(aluguel_input * 0.5), 
+            value=val_b_db, 
             step=25.0
         )
         aluguel_a_input = max(0.0, aluguel_input - aluguel_b_input)
+        st.sidebar.info(f"💡 Valor de A ajustado automaticamente: **R$ {aluguel_a_input:,.2f}**")
+else:
+    aluguel_a_input = val_a_db
+    aluguel_b_input = val_b_db
 
 if st.sidebar.button("💾 Salvar Parâmetros"):
-    salvar_configuracoes(aluguel_input, salario_a_input, salario_b_input, vr_a_input, meta_reserva_input)
-    st.sidebar.success("Parâmetros atualizados!")
+    a_save = aluguel_a_input if edicao_manual else aluguel_input * 0.5
+    b_save = aluguel_b_input if edicao_manual else aluguel_input * 0.5
+    salvar_configuracoes(aluguel_input, salario_a_input, salario_b_input, vr_a_input, meta_reserva_input, a_save, b_save, edicao_manual)
+    st.sidebar.success("Parâmetros e aluguel customizado salvos no Supabase!")
     st.rerun()
 
 # -----------------------------------------------------------------------------
@@ -584,7 +586,6 @@ with tab4:
         fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
         st.plotly_chart(fig_invest, use_container_width=True)
 
-# --- ABA 5: RELATÓRIOS PDF SEPARADOS POR GASTOS E PERDAS ---
 with tab5:
     st.subheader("📑 Central de Relatórios em PDF")
     st.markdown("Gere relatórios executivos em PDF com divisão exata entre **Gastos Fixos** e **Despesas Variáveis / Perdas**.")
@@ -598,5 +599,3 @@ with tab5:
         mime="application/pdf",
         use_container_width=True
     )
-    
-    st.info("💡 O documento gerado possui seções customizadas separando claramente as entradas, os custos fixos estruturais e as perdas/saídas variáveis registradas no mês.")
