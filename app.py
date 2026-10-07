@@ -203,9 +203,9 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FUNÇÕES DE DADOS
-# -----------------------------------------------------------------------------
+# =============================================================================
 def carregar_configuracoes():
     if supabase:
         try:
@@ -350,6 +350,9 @@ def listar_meses_fechados():
             pass
     return pd.DataFrame(columns=["id", "mes", "ano", "orcamento", "fechado"])
 
+# -----------------------------------------------------------------------------
+# PDFs
+# -----------------------------------------------------------------------------
 def gerar_relatorio_mensal_pdf(mes, ano, df_mes, orcamento):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -472,7 +475,6 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
 # =============================================================================
 # FUNÇÕES — CORTES INTELIGENTES (base)
 # =============================================================================
-
 def _fmt_brl(v: float) -> str:
     try:
         return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -628,12 +630,10 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta, m
 # =============================================================================
 # NOVA FUNÇÃO — META IDEAL DE POUPANÇA
 # =============================================================================
-
 def calcular_meta_poupanca_ideal(receita_bruta, total_fixos, total_variaveis,
                                   meta_reserva_atual, taxa_ideal=0.20):
     if receita_bruta <= 0:
         return None
-
     meta_ideal_valor   = receita_bruta * taxa_ideal
     poupanca_atual     = max(0.0, meta_reserva_atual)
     falta_valor        = max(0.0, meta_ideal_valor - poupanca_atual)
@@ -662,7 +662,6 @@ def calcular_meta_poupanca_ideal(receita_bruta, total_fixos, total_variaveis,
         "status_txt":         status_txt,
     }
 
-
 def calcular_poupanca_por_categoria(df_sug, receita_bruta):
     if df_sug.empty:
         return pd.DataFrame()
@@ -682,13 +681,11 @@ def calcular_poupanca_por_categoria(df_sug, receita_bruta):
             "Peso Atual (%)":   s["peso_receita"],
             "Peso Ideal (%)":   s["benchmark_saudavel"],
         })
-    df = pd.DataFrame(linhas).sort_values("Reduzir (R$)", ascending=False).reset_index(drop=True)
-    return df
+    return pd.DataFrame(linhas).sort_values("Reduzir (R$)", ascending=False).reset_index(drop=True)
 
 # =============================================================================
 # FUNÇÕES — 13 AÇÕES DE CORTE
 # =============================================================================
-
 ESFORCO_POR_CATEGORIA = {
     "Lazer / Passeios": "Fácil", "Vestuário": "Fácil", "Outros": "Fácil",
     "Recarga celular": "Fácil", "Corte de cabelo": "Médio",
@@ -952,7 +949,7 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
     story.append(Spacer(1, 15))
 
     story.append(Paragraph("<b>3. Justificativa Detalhada de Cada Corte</b>", heading_style))
-    story.append(Paragraph("Abaixo está o motivo de cada categoria ter sido sinalizada, quanto você economiza e o impacto esperado na sua renda.", just_style))
+    story.append(Paragraph("Abaixo está o motivo de cada categoria ter sido sinalizada.", just_style))
     story.append(Spacer(1, 10))
 
     for _, s in df_sug.iterrows():
@@ -965,16 +962,59 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
         story.append(Spacer(1, 10))
 
     story.append(Paragraph("<b>4. Plano de Acao Recomendado (Top 5)</b>", heading_style))
-    story.append(Paragraph("Comece pelas categorias de maior prioridade. Aplicar os cortes sugeridos gera a economia anual indicada.", just_style))
     story.append(Spacer(1, 8))
     for _, s in df_sug.head(5).iterrows():
         nova_meta = s['valor_atual'] - s['corte_sugerido']
-        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria']}:</b> Reduzir de <b>R$ {s['valor_atual']:,.2f}</b> para aproximadamente <b>R$ {nova_meta:,.2f}</b> (corte de R$ {s['corte_sugerido']:,.2f}/mes, economia anual de R$ {s['economia_potencial']:,.2f})", just_style))
+        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria']}:</b> Reduzir de <b>R$ {s['valor_atual']:,.2f}</b> para aproximadamente <b>R$ {nova_meta:,.2f}</b>", just_style))
         story.append(Spacer(1, 4))
 
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
+
+# =============================================================================
+# FUNÇÕES — PERSISTÊNCIA DO SIMULADOR DE INVESTIMENTO
+# =============================================================================
+def salvar_simulacao_investimento(nome, aporte, anos, taxa,
+                                    montante, investido, juros):
+    if supabase:
+        try:
+            supabase.table("simulacoes_investimento").insert({
+                "nome":             str(nome).strip(),
+                "aporte_mensal":    float(aporte),
+                "anos":             int(anos),
+                "taxa_anual":       float(taxa),
+                "montante_final":   float(montante),
+                "total_investido":  float(investido),
+                "juros_totais":     float(juros),
+            }).execute()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao salvar simulação: {e}")
+            return False
+    else:
+        st.warning("Supabase não conectado — a simulação não foi salva.")
+        return False
+
+def carregar_simulacoes_investimento():
+    if supabase:
+        try:
+            res = supabase.table("simulacoes_investimento").select("*") \
+                .order("criado_em", desc=True).execute()
+            if res.data:
+                return pd.DataFrame(res.data)
+        except:
+            pass
+    return pd.DataFrame(columns=["id", "nome", "aporte_mensal", "anos",
+                                  "taxa_anual", "montante_final",
+                                  "total_investido", "juros_totais", "criado_em"])
+
+def remover_simulacao_investimento(sim_id):
+    if supabase:
+        try:
+            supabase.table("simulacoes_investimento").delete().eq("id", sim_id).execute()
+        except:
+            pass
 
 # -----------------------------------------------------------------------------
 # SIDEBAR
@@ -1190,36 +1230,141 @@ with tab3:
                     adicionar_gasto_fixo(desc_fix, val_fix)
                     st.rerun()
 
+# =============================================================================
+# TAB 4 — SIMULADOR DE INVESTIMENTO COM PERSISTÊNCIA
+# =============================================================================
 with tab4:
-    st.subheader("📈 Simulador de Crescimento Patrimonial")
+    st.subheader("📈 Simulador de Crescimento Patrimonial (Juros Compostos)")
+    st.markdown("Simule cenários, **salve no Supabase** e compare diferentes estratégias de investimento.")
+
     col_sim1, col_sim2 = st.columns(2)
     with col_sim1:
-        aporte_sim = st.number_input("Aporte Mensal (R$)", value=float(meta_reserva_efetiva), step=50.0)
-        anos_sim = st.slider("Horizonte (Anos)", min_value=1, max_value=30, value=5)
+        aporte_sim = st.number_input("Aporte Mensal Utilizado (R$)",
+                                       value=float(meta_reserva_efetiva), step=50.0,
+                                       key="aporte_sim")
+        anos_sim = st.slider("Horizonte de Tempo (Anos)", min_value=1, max_value=30,
+                              value=5, key="anos_sim")
     with col_sim2:
-        taxa_anual_sim = st.slider("Rentabilidade Anual (%)", min_value=1.0, max_value=20.0, value=10.0, step=0.5)
+        taxa_anual_sim = st.slider("Rentabilidade Anual Estimada (%)", min_value=1.0,
+                                     max_value=20.0, value=10.0, step=0.5,
+                                     key="taxa_sim")
+        nome_sim = st.text_input("Nome da simulação (para salvar)",
+                                  placeholder="Ex: Cenário conservador 5 anos",
+                                  key="nome_sim")
+
     taxa_mensal = (1 + taxa_anual_sim / 100) ** (1 / 12) - 1
     meses_total = anos_sim * 12
+
     lista_projecao = []
     montante_atual = 0.0
     total_investido = 0.0
+
     for m in range(1, meses_total + 1):
         montante_atual = (montante_atual + aporte_sim) * (1 + taxa_mensal)
         total_investido += aporte_sim
         if m % 12 == 0:
-            lista_projecao.append({"Ano": m // 12, "Total Investido": total_investido,
-                                    "Patrimônio Total": montante_atual,
-                                    "Juros Acumulados": montante_atual - total_investido})
+            lista_projecao.append({
+                "Ano": m // 12,
+                "Total Investido": total_investido,
+                "Patrimônio Total": montante_atual,
+                "Juros Acumulados": montante_atual - total_investido
+            })
+
     if lista_projecao:
         df_proj = pd.DataFrame(lista_projecao)
+        juros_totais = montante_atual - total_investido
+
         col_res1, col_res2, col_res3 = st.columns(3)
-        col_res1.metric("Valor Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        col_res2.metric("Total Investido", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        col_res3.metric("Rendimento", f"+ R$ {(montante_atual - total_investido):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res1.metric("Valor Total Acumulado",
+                         f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res2.metric("Total do Seu Bolso (Aporte)",
+                         f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res3.metric("Rendimento (Juros)",
+                         f"+ R$ {juros_totais:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+
+        st.markdown("")
+        col_btn1, col_btn2 = st.columns([1, 3])
+        with col_btn1:
+            if st.button("💾 Salvar esta simulação", use_container_width=True,
+                          key="btn_salvar_sim"):
+                if not nome_sim.strip():
+                    st.warning("Dê um nome à simulação antes de salvar.")
+                else:
+                    ok = salvar_simulacao_investimento(
+                        nome_sim, aporte_sim, anos_sim, taxa_anual_sim,
+                        montante_atual, total_investido, juros_totais
+                    )
+                    if ok:
+                        st.success(f"Simulação '{nome_sim}' salva com sucesso!")
+                        st.rerun()
+
         st.divider()
-        fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial")
-        fig_invest.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3")
+        fig_invest = px.area(df_proj, x="Ano",
+                              y=["Patrimônio Total", "Total Investido"],
+                              title="Evolução Patrimonial Projetada")
+        fig_invest.update_layout(paper_bgcolor="#151B23",
+                                  plot_bgcolor="#151B23",
+                                  font_color="#E6EDF3")
         st.plotly_chart(fig_invest, use_container_width=True)
+
+    st.divider()
+
+    # =====================================================
+    # SIMULAÇÕES SALVAS
+    # =====================================================
+    st.markdown("### 📂 Simulações Salvas")
+    df_sims = carregar_simulacoes_investimento()
+
+    if df_sims.empty:
+        st.info("Nenhuma simulação salva ainda. Ajuste os parâmetros acima e clique em **💾 Salvar esta simulação**.")
+    else:
+        total_sims = len(df_sims)
+        melhor = df_sims.loc[df_sims["montante_final"].idxmax()]
+        st.markdown(
+            f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
+            f"border-radius:12px;padding:14px 18px;margin-bottom:12px;'>"
+            f"<b style='color:{PALETA['texto_principal']};'>📊 {total_sims} simulações salvas</b> · "
+            f"<span style='color:{PALETA['texto_secundario']};'>Melhor resultado: "
+            f"<b style='color:{PALETA['verde']};'>{melhor['nome']}</b> com "
+            f"R$ {melhor['montante_final']:,.2f}</span></div>",
+            unsafe_allow_html=True
+        )
+
+        df_show = df_sims[["id", "nome", "aporte_mensal", "anos", "taxa_anual",
+                            "montante_final", "total_investido", "juros_totais",
+                            "criado_em"]].copy()
+        df_show["aporte_mensal"]  = df_show["aporte_mensal"].apply(lambda v: _fmt_brl(v))
+        df_show["taxa_anual"]     = df_show["taxa_anual"].apply(lambda v: f"{v:.2f}%")
+        df_show["montante_final"] = df_show["montante_final"].apply(lambda v: _fmt_brl(v))
+        df_show["total_investido"]= df_show["total_investido"].apply(lambda v: _fmt_brl(v))
+        df_show["juros_totais"]   = df_show["juros_totais"].apply(lambda v: _fmt_brl(v))
+        df_show["anos"]           = df_show["anos"].apply(lambda v: f"{int(v)} anos")
+        df_show["criado_em"]      = pd.to_datetime(df_show["criado_em"]).dt.strftime("%d/%m/%Y %H:%M")
+        df_show.columns = ["ID", "Nome", "Aporte Mensal", "Prazo", "Taxa Anual",
+                            "Montante Final", "Total Investido", "Juros",
+                            "Salvo em"]
+        st.dataframe(df_show.drop(columns=["ID"]), use_container_width=True, hide_index=True)
+
+        st.markdown("#### 📊 Comparação entre simulações salvas")
+        fig_cmp = px.bar(df_sims.sort_values("montante_final", ascending=True),
+                          x="montante_final", y="nome", orientation="h",
+                          color="montante_final",
+                          color_continuous_scale=["#3B82F6", "#22C55E"],
+                          labels={"montante_final": "Montante Final (R$)", "nome": ""})
+        fig_cmp.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23",
+                               font_color="#E6EDF3", showlegend=False,
+                               coloraxis_showscale=False, height=max(200, 60 * len(df_sims)))
+        st.plotly_chart(fig_cmp, use_container_width=True)
+
+        st.markdown("#### 🗑️ Excluir simulação")
+        cols_del = st.columns(min(4, len(df_sims)))
+        for i, (_, s) in enumerate(df_sims.iterrows()):
+            with cols_del[i % 4]:
+                if st.button(f"🗑️ {s['nome'][:20]}", key=f"del_sim_{s['id']}",
+                              use_container_width=True):
+                    remover_simulacao_investimento(s["id"])
+                    st.success(f"Simulação '{s['nome']}' removida.")
+                    st.rerun()
 
 with tab5:
     st.subheader("📊 DRE Gerencial & Análise de Lucratividade")
@@ -1344,7 +1489,7 @@ with tab7:
         st.info("Nenhum mês registrado ainda.")
 
 # =============================================================================
-# ABA 8 — CORTES INTELIGENTES COM META DE POUPANÇA
+# ABA 8 — CORTES INTELIGENTES
 # =============================================================================
 with tab8:
     st.subheader("✂️ Cortes Inteligentes — Onde você deve economizar")
@@ -1354,15 +1499,9 @@ with tab8:
                                            meta_reserva_mensal=meta_reserva_efetiva)
     df_cortes_concluidos = carregar_cortes_concluidos()
 
-    # =====================================================
-    # 🎯 META IDEAL DE POUPANÇA (NOVO)
-    # =====================================================
     meta_poup = calcular_meta_poupanca_ideal(
-        receita_bruta_corte,
-        total_fixos_a,
-        total_gastos_variaveis,
-        meta_reserva_efetiva,
-        taxa_ideal=0.20
+        receita_bruta_corte, total_fixos_a, total_gastos_variaveis,
+        meta_reserva_efetiva, taxa_ideal=0.20
     )
 
     if meta_poup:
@@ -1412,9 +1551,6 @@ with tab8:
         ck3.metric("🎯 Prioridade #1", top_cat["categoria"])
         st.divider()
 
-        # =====================================================
-        # 📊 TABELA: QUANTO REDUZIR POR CATEGORIA
-        # =====================================================
         st.markdown("### 📊 Quanto reduzir em cada categoria (R$ e %)")
         st.caption("Cada linha mostra o valor e o percentual exato a reduzir.")
 
@@ -1441,9 +1577,6 @@ with tab8:
             )
         st.divider()
 
-        # =====================================================
-        # 🏆 ANÁLISE DETALHADA POR CATEGORIA
-        # =====================================================
         st.markdown("### 🏆 Análise Detalhada por Categoria")
         economia_max = df_sug["economia_potencial"].max()
 
