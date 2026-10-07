@@ -76,7 +76,9 @@ for i, m in enumerate(meses_nomes):
     if f"reserva_mes_{i+1}" not in st.session_state:
         st.session_state[f"reserva_mes_{i+1}"] = False
 
+# =============================================================================
 # LOGIN
+# =============================================================================
 if not st.session_state['autenticado']:
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
     with col_l2:
@@ -110,7 +112,7 @@ def _fmt_brl(v):
     except: return "R$ 0,00"
 
 # =============================================================================
-# FUNÇÕES CDI (NOVAS — não alteram nada existente)
+# FUNÇÕES CDI
 # =============================================================================
 @st.cache_data(ttl=3600)
 def obter_taxa_cdi_atual():
@@ -172,7 +174,7 @@ def gerar_grafico_projecao_cdi(df_evolucao, aporte_inicial, aporte_mensal):
     return fig
 
 # =============================================================================
-# FUNÇÕES DE DADOS (PRESERVADAS)
+# FUNÇÕES DE DADOS
 # =============================================================================
 def carregar_configuracoes():
     if supabase:
@@ -364,14 +366,20 @@ def marcar_item_checklist(i, c=True):
         try: supabase.table("checklist_semanal").update({"concluida":c}).eq("id",i).execute()
         except: pass
 
-# SIMULADOR
-def salvar_simulacao_investimento(nome, aporte, anos, taxa, montante, investido, juros, cdi_taxa=None):
+# =============================================================================
+# SIMULADOR — com aporte inicial e aportes variáveis
+# =============================================================================
+def salvar_simulacao_investimento(nome, aporte, anos, taxa, montante, investido, juros,
+                                    cdi_taxa=None, aporte_inicial=None):
     if supabase:
         try:
             dados = {"nome":str(nome).strip(),"aporte_mensal":float(aporte),"anos":int(anos),
                      "taxa_anual":float(taxa),"montante_final":float(montante),
                      "total_investido":float(investido),"juros_totais":float(juros)}
             if cdi_taxa is not None: dados["cdi_taxa_utilizada"] = float(cdi_taxa)
+            if aporte_inicial is not None:
+                try: dados["aporte_inicial"] = float(aporte_inicial)
+                except: pass
             supabase.table("simulacoes_investimento").insert(dados).execute()
             return True
         except Exception as e:
@@ -557,8 +565,8 @@ def calcular_diagnostico(receita, tg, tf, reserva, ativos, passivos):
     pp = min(25, max(0, tp * 100))
     mr = (reserva / tf) if tf > 0 else 0
     pr = min(25, max(0, (mr / 6) * 25))
-    pd = passivos / (ativos + passivos) if (ativos + passivos) > 0 else 0
-    pdv = max(0, 25 * (1 - pd))
+    pd_ = passivos / (ativos + passivos) if (ativos + passivos) > 0 else 0
+    pdv = max(0, 25 * (1 - pd_))
     pi = min(15, max(0, (tp * 100 / 30) * 15))
     pdiv = 10 if ativos > 0 else 0
     nota = round(pp + pr + pdv + pi + pdiv, 1)
@@ -644,7 +652,9 @@ def gerar_relatorio_pdf(df_f, df_v, sa, sb, aa, ab):
     else: story.append(Paragraph("Nenhuma.", ns))
     doc.build(story); buffer.seek(0); return buffer.getvalue()
 
+# =============================================================================
 # SIDEBAR
+# =============================================================================
 st.sidebar.title("⚙️ Parâmetros Financeiros")
 if st.sidebar.button("🔒 Sair / Bloquear Tela", use_container_width=True):
     st.session_state['autenticado'] = False; st.rerun()
@@ -736,6 +746,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📅 Relatório Mensal", "✂️ Cortes Inteligentes", "🚀 Prosperidade"
 ])
 
+# =============================================================================
+# TAB 1
+# =============================================================================
 with tab1:
     st.subheader("🏠 Divisão e Proporcionalidade do Aluguel (A e B)")
     c1, c2, c3 = st.columns(3)
@@ -773,6 +786,9 @@ with tab1:
         st.progress(mc / 12.0)
         st.markdown(f"**Progresso:** {mc} de 12 meses (**{mc/12*100:.1f}%**)")
 
+# =============================================================================
+# TAB 2
+# =============================================================================
 with tab2:
     st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
     c1, c2, c3 = st.columns(3)
@@ -798,6 +814,9 @@ with tab2:
             if c5.button("🗑️", key=f"dv_{r['id']}"):
                 remover_despesa_variavel(r["id"]); st.rerun()
 
+# =============================================================================
+# TAB 3
+# =============================================================================
 with tab3:
     st.subheader("📋 Tabela de Custos Fixos de A")
     c1, c2 = st.columns([2, 1])
@@ -817,95 +836,261 @@ with tab3:
                 if df_: adicionar_gasto_fixo(df_, vf); st.rerun()
 
 # =============================================================================
-# TAB 4 — SIMULADOR + CDI (NOVO)
+# TAB 4 — SIMULADOR COM APORTE INICIAL E APORTES VARIÁVEIS
 # =============================================================================
 with tab4:
     st.subheader("📈 Simulador de Crescimento Patrimonial (Juros Compostos & CDI)")
-    st.markdown("Simule com **taxa fixa** ou **atrelado ao CDI**, salve no Supabase e compare estratégias.")
+    st.markdown("Simule com **taxa fixa** ou **atrelado ao CDI**, com **aporte inicial** e **aportes mensais flexíveis**.")
 
-    # Card CDI
+    # ---------- CDI ATUAL ----------
     cdi_atual = obter_taxa_cdi_atual()
     ci1, ci2 = st.columns([1, 3])
     with ci1:
         st.metric("📊 CDI Atual (a.a.)", f"{cdi_atual:.2f}%" if cdi_atual else "—")
     with ci2:
         if cdi_atual:
-            st.success(f"CDI do Banco Central (SGS 4389). Atualizado a cada 1h.", icon="✅")
+            st.success("CDI do Banco Central (SGS 4389). Atualizado a cada 1h.", icon="✅")
         else:
             st.warning("CDI indisponível. Informe manualmente abaixo.", icon="⚠️")
     st.divider()
 
-    modo_taxa = st.radio("Modalidade de rentabilidade:",
-        ["🎯 Taxa fixa (% ao ano)", "📊 Atrelado ao CDI (% do CDI)"], horizontal=True, key="modo_taxa_sim")
+    # ---------- MODALIDADE ----------
+    modo_taxa = st.radio(
+        "Modalidade de rentabilidade:",
+        ["🎯 Taxa fixa (% ao ano)", "📊 Atrelado ao CDI (% do CDI)"],
+        horizontal=True, key="modo_taxa_sim"
+    )
 
+    # ---------- PARÂMETROS ----------
     col_s1, col_s2 = st.columns(2)
     with col_s1:
-        aporte_sim = st.number_input("Aporte Mensal Utilizado (R$)", value=float(meta_reserva_efetiva), step=50.0, key="aporte_sim")
-        anos_sim = st.slider("Horizonte de Tempo (Anos)", min_value=1, max_value=30, value=5, key="anos_sim")
+        aporte_inicial = st.number_input(
+            "💰 Aporte Inicial (R$) — o que você já tem para investir agora",
+            value=0.0, step=100.0, key="aporte_ini_sim"
+        )
+        aporte_sim = st.number_input(
+            "Aporte Mensal Base (R$)",
+            value=float(meta_reserva_efetiva), step=50.0, key="aporte_sim"
+        )
+        anos_sim = st.slider("Horizonte de Tempo (Anos)", min_value=1, max_value=30,
+                              value=5, key="anos_sim")
     with col_s2:
         if modo_taxa.startswith("🎯"):
-            taxa_anual_sim = st.slider("Rentabilidade Anual Estimada (%)", min_value=1.0, max_value=25.0, value=10.0, step=0.5, key="taxa_sim")
+            taxa_anual_sim = st.slider("Rentabilidade Anual Estimada (%)",
+                                        min_value=1.0, max_value=25.0, value=10.0, step=0.5,
+                                        key="taxa_sim")
             cdi_ref = None
-            nome_sim = st.text_input("Nome da simulação (para salvar)", placeholder="Ex: Cenário conservador 5 anos", key="nome_sim_fixa")
+            nome_sim = st.text_input("Nome da simulação (para salvar)",
+                                      placeholder="Ex: Cenário conservador 5 anos",
+                                      key="nome_sim_fixa")
         else:
-            cdi_manual = st.number_input("CDI considerada (% a.a.) — 0 = usar atual", min_value=0.0, max_value=30.0,
-                value=float(cdi_atual) if cdi_atual else 13.65, step=0.25, key="cdi_manual")
-            percentual_cdi_sim = st.slider("% do CDI contratado", min_value=80, max_value=150, value=100, step=5, key="pct_cdi_sim")
+            cdi_manual = st.number_input(
+                "CDI considerada (% a.a.) — 0 = usar atual",
+                min_value=0.0, max_value=30.0,
+                value=float(cdi_atual) if cdi_atual else 13.65,
+                step=0.25, key="cdi_manual"
+            )
+            percentual_cdi_sim = st.slider("% do CDI contratado", min_value=80, max_value=150,
+                                             value=100, step=5, key="pct_cdi_sim")
             cdi_ref = cdi_manual if cdi_manual > 0 else (cdi_atual if cdi_atual else 13.65)
             taxa_anual_sim = cdi_ref * (percentual_cdi_sim / 100)
             st.info(f"**Taxa efetiva: {taxa_anual_sim:.2f}% a.a.** (CDI {cdi_ref:.2f}% × {percentual_cdi_sim}%)")
-            nome_sim = st.text_input("Nome da simulação (para salvar)", placeholder="Ex: CDB 110% CDI — 5 anos", key="nome_sim_cdi")
+            nome_sim = st.text_input("Nome da simulação (para salvar)",
+                                      placeholder="Ex: CDB 110% CDI — 5 anos",
+                                      key="nome_sim_cdi")
 
-    taxa_mensal = (1 + taxa_anual_sim / 100) ** (1 / 12) - 1
+    # =====================================================
+    # APORTES VARIÁVEIS POR MÊS
+    # =====================================================
+    st.divider()
+    usar_aporte_variavel = st.checkbox(
+        "🔧 Personalizar aportes mês a mês (flexível)",
+        value=False, key="chk_aporte_var",
+        help="Marque para editar o valor depositado em cada mês individualmente."
+    )
+
     meses_total = anos_sim * 12
-    lista_proj = []; montante_atual = 0.0; total_investido = 0.0
-    for m in range(1, meses_total + 1):
-        montante_atual = (montante_atual + aporte_sim) * (1 + taxa_mensal)
-        total_investido += aporte_sim
+
+    if usar_aporte_variavel:
+        st.markdown("##### 📝 Edite o valor do aporte para cada mês")
+        st.caption("Altere livremente. Ex: R$ 800 no mês 1, R$ 500 no mês 2, R$ 0 no mês 3...")
+
+        chave_df = f"df_aportes_{meses_total}"
+        if chave_df not in st.session_state:
+            st.session_state[chave_df] = pd.DataFrame({
+                "Mês": list(range(1, meses_total + 1)),
+                "Aporte (R$)": [float(aporte_sim)] * meses_total,
+            })
+
+        cb1, cb2, cb3 = st.columns([1, 1, 2])
+        with cb1:
+            if st.button("🔄 Resetar para base", key="btn_reset_ap", use_container_width=True):
+                st.session_state[chave_df] = pd.DataFrame({
+                    "Mês": list(range(1, meses_total + 1)),
+                    "Aporte (R$)": [float(aporte_sim)] * meses_total,
+                })
+                st.rerun()
+        with cb2:
+            zerar_apos = st.number_input("Zerar após mês", min_value=0, max_value=meses_total,
+                                           value=0, step=1, key="zerar_ap")
+            if st.button("Aplicar", key="btn_zerar_ap", use_container_width=True):
+                novos = st.session_state[chave_df].copy()
+                novos.loc[novos["Mês"] > zerar_apos, "Aporte (R$)"] = 0.0
+                st.session_state[chave_df] = novos
+                st.rerun()
+        with cb3:
+            st.markdown("**Atalhos:**")
+            cc1, cc2, cc3, cc4 = st.columns(4)
+            with cc1:
+                if st.button("Tudo R$ 0", key="q_zero"):
+                    nv = st.session_state[chave_df].copy(); nv["Aporte (R$)"] = 0.0
+                    st.session_state[chave_df] = nv; st.rerun()
+            with cc2:
+                if st.button("Tudo R$ 500", key="q_500"):
+                    nv = st.session_state[chave_df].copy(); nv["Aporte (R$)"] = 500.0
+                    st.session_state[chave_df] = nv; st.rerun()
+            with cc3:
+                if st.button("Tudo R$ 800", key="q_800"):
+                    nv = st.session_state[chave_df].copy(); nv["Aporte (R$)"] = 800.0
+                    st.session_state[chave_df] = nv; st.rerun()
+            with cc4:
+                if st.button("Tudo R$ 1000", key="q_1000"):
+                    nv = st.session_state[chave_df].copy(); nv["Aporte (R$)"] = 1000.0
+                    st.session_state[chave_df] = nv; st.rerun()
+
+        df_edit = st.data_editor(
+            st.session_state[chave_df],
+            use_container_width=True,
+            hide_index=True,
+            num_rows="fixed",
+            key=f"editor_{meses_total}",
+            column_config={
+                "Mês": st.column_config.NumberColumn("Mês", disabled=True, width="small"),
+                "Aporte (R$)": st.column_config.NumberColumn(
+                    "Aporte (R$)", min_value=0.0, step=50.0, format="%.2f", required=False
+                ),
+            },
+            height=min(420, 80 + 35 * min(meses_total, 10)),
+        )
+        st.session_state[chave_df] = df_edit
+
+        lista_aportes = df_edit["Aporte (R$)"].fillna(0).astype(float).tolist()
+        soma_mensais = sum(lista_aportes)
+
+        st.markdown(
+            f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
+            f"border-radius:10px;padding:12px 16px;margin-top:8px;'>"
+            f"<b style='color:{PALETA['texto_principal']};'>💼 Total que você vai investir:</b> "
+            f"<b style='color:{PALETA['verde']};font-size:15px;'>{_fmt_brl(aporte_inicial + soma_mensais)}</b> "
+            f"<span style='color:{PALETA['texto_secundario']};font-size:12px;'>"
+            f"(inicial {_fmt_brl(aporte_inicial)} + mensais {_fmt_brl(soma_mensais)} · "
+            f"média mensal {_fmt_brl(soma_mensais/meses_total if meses_total > 0 else 0)})</span></div>",
+            unsafe_allow_html=True
+        )
+    else:
+        lista_aportes = [float(aporte_sim)] * meses_total
+
+    # ---------- CÁLCULO ----------
+    taxa_mensal = (1 + taxa_anual_sim / 100) ** (1 / 12) - 1
+
+    lista_proj = []
+    montante_atual = float(aporte_inicial)
+    total_investido = float(aporte_inicial)
+
+    for m, ap in enumerate(lista_aportes, start=1):
+        montante_atual = (montante_atual + ap) * (1 + taxa_mensal)
+        total_investido += ap
         if m % 12 == 0:
-            lista_proj.append({"Ano":m//12,"Total Investido":total_investido,
-                                "Patrimônio Total":montante_atual,"Juros Acumulados":montante_atual-total_investido})
+            lista_proj.append({
+                "Ano": m // 12,
+                "Total Investido": total_investido,
+                "Patrimônio Total": montante_atual,
+                "Juros Acumulados": montante_atual - total_investido,
+            })
 
     if lista_proj:
         df_proj = pd.DataFrame(lista_proj)
         juros_totais = montante_atual - total_investido
-        cr1, cr2, cr3 = st.columns(3)
-        cr1.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        cr2.metric("Total do Seu Bolso (Aporte)", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        cr3.metric("Rendimento (Juros)", f"+ R$ {juros_totais:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+
+        cr1, cr2, cr3, cr4 = st.columns(4)
+        cr1.metric("💰 Aporte Inicial", _fmt_brl(aporte_inicial))
+        cr2.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        cr3.metric("Total Investido", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        cr4.metric("Rendimento", f"+ R$ {juros_totais:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+
         st.markdown("")
-        cb1, cb2 = st.columns([1, 3])
-        with cb1:
+        cb_1, cb_2 = st.columns([1, 3])
+        with cb_1:
             if st.button("💾 Salvar esta simulação", use_container_width=True, key="btn_salvar_sim"):
                 if not nome_sim.strip():
-                    st.warning("Dê um nome à simulação.")
+                    st.warning("Dê um nome à simulação antes de salvar.")
                 else:
-                    ok = salvar_simulacao_investimento(nome_sim, aporte_sim, anos_sim, taxa_anual_sim,
-                        montante_atual, total_investido, juros_totais, cdi_taxa=cdi_ref)
+                    ap_medio = sum(lista_aportes) / len(lista_aportes) if lista_aportes else aporte_sim
+                    ok = salvar_simulacao_investimento(
+                        nome_sim, ap_medio, anos_sim, taxa_anual_sim,
+                        montante_atual, total_investido, juros_totais,
+                        cdi_taxa=cdi_ref, aporte_inicial=aporte_inicial
+                    )
                     if ok:
                         st.success(f"Simulação '{nome_sim}' salva!"); st.rerun()
+
         st.divider()
+
         if modo_taxa.startswith("📊") and cdi_atual:
-            fig_invest = gerar_grafico_projecao_cdi(df_proj, 0.0, aporte_sim)
-            st.plotly_chart(fig_invest, use_container_width=True)
+            df_graf = df_proj.copy()
+            df_graf["Sem Rendimento"] = aporte_inicial + df_graf["Ano"].apply(
+                lambda a: sum(lista_aportes[:int(a * 12)])
+            )
+            fig_graf = go.Figure()
+            fig_graf.add_trace(go.Scatter(
+                x=df_graf["Ano"], y=df_graf["Patrimônio Total"], mode="lines+markers",
+                name="Com CDI", line=dict(color="#22C55E", width=3),
+                fill="tozeroy", fillcolor="rgba(34,197,94,0.15)"
+            ))
+            fig_graf.add_trace(go.Scatter(
+                x=df_graf["Ano"], y=df_graf["Sem Rendimento"], mode="lines+markers",
+                name="Sem Rendimento", line=dict(color="#EF4444", width=2, dash="dash")
+            ))
+            fig_graf.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23",
+                                    font_color="#E6EDF3", xaxis_title="Anos", yaxis_title="Valor (R$)",
+                                    legend_title="Cenário", margin=dict(l=20, r=20, t=30, b=20))
+            st.plotly_chart(fig_graf, use_container_width=True)
         else:
-            fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total","Total Investido"], title="Evolução Patrimonial Projetada")
+            fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"],
+                                  title="Evolução Patrimonial Projetada")
             fig_invest.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3")
             st.plotly_chart(fig_invest, use_container_width=True)
 
     st.divider()
 
+    # ---------- COMPARATIVO CDI ----------
     if modo_taxa.startswith("📊") and cdi_atual:
         st.markdown("### 🎯 Comparativo de Produtos de Renda Fixa")
         st.caption("Veja quanto renderiam diferentes produtos atrelados ao CDI com os mesmos aportes.")
-        produtos = [("Poupança",70,"#8A95A5"),("Tesouro Selic",100,"#3B82F6"),("CDB 100% CDI",100,"#06B6D4"),
-                    ("CDB 110% CDI",110,"#22C55E"),("LCI/LCA 90% CDI",90,"#7C3AED"),("CDB 120% CDI",120,"#F59E0B")]
+
+        produtos = [
+            ("Poupança", 70, "#8A95A5"),
+            ("Tesouro Selic", 100, "#3B82F6"),
+            ("CDB 100% CDI", 100, "#06B6D4"),
+            ("CDB 110% CDI", 110, "#22C55E"),
+            ("LCI/LCA 90% CDI", 90, "#7C3AED"),
+            ("CDB 120% CDI", 120, "#F59E0B"),
+        ]
+
         res = []
-        for np_, pct, cor in produtos:
-            proj = calcular_projecao_cdi(0.0, aporte_sim, anos_sim, pct, cdi_ref)
-            if proj:
-                res.append({"Produto":np_,"Percentual do CDI":f"{pct}%","Taxa Efetiva (% a.a.)":round(cdi_ref*pct/100,2),
-                    "Montante Final":proj["montante_final"],"Juros Totais":proj["juros_totais"],"_cor":cor})
+        for nome_p, pct, cor in produtos:
+            cdi_m = (1 + cdi_ref / 100) ** (1 / 12) - 1
+            tx_m = cdi_m * (pct / 100)
+            mnt = float(aporte_inicial)
+            inv = float(aporte_inicial)
+            for ap in lista_aportes:
+                mnt = (mnt + ap) * (1 + tx_m)
+                inv += ap
+            res.append({"Produto": nome_p, "Percentual do CDI": f"{pct}%",
+                        "Taxa Efetiva (% a.a.)": round(cdi_ref * pct / 100, 2),
+                        "Montante Final": round(mnt, 2),
+                        "Juros Totais": round(mnt - inv, 2), "_cor": cor})
+
         if res:
             dfp = pd.DataFrame(res)
             ds = dfp.drop(columns=["_cor"]).copy()
@@ -914,38 +1099,55 @@ with tab4:
             ds["Taxa Efetiva (% a.a.)"] = ds["Taxa Efetiva (% a.a.)"].apply(lambda v: f"{v:.2f}%")
             st.dataframe(ds, use_container_width=True, hide_index=True)
             fc = px.bar(dfp, x="Produto", y="Montante Final", color="Produto",
-                color_discrete_sequence=[r["_cor"] for r in res], title=f"Comparativo (CDI {cdi_ref:.2f}% a.a.)")
-            fc.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3",
-                showlegend=False, xaxis_tickangle=-25)
+                color_discrete_sequence=[r["_cor"] for r in res],
+                title=f"Comparativo (CDI {cdi_ref:.2f}% a.a.)")
+            fc.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23",
+                              font_color="#E6EDF3", showlegend=False, xaxis_tickangle=-25)
             st.plotly_chart(fc, use_container_width=True)
 
     st.divider()
 
+    # ---------- HISTÓRICO CDI ----------
     if cdi_atual:
         with st.expander("📉 Ver histórico recente do CDI (Banco Central)"):
             dch = obter_historico_cdi(30)
             if not dch.empty:
-                fc2 = px.line(dch, x="data", y="valor", markers=True, title="Taxa CDI (últimos 30 dias úteis)")
+                fc2 = px.line(dch, x="data", y="valor", markers=True,
+                               title="Taxa CDI (últimos 30 dias úteis)")
                 fc2.update_traces(line_color="#22C55E")
-                fc2.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3", height=260)
+                fc2.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23",
+                                   font_color="#E6EDF3", height=260)
                 st.plotly_chart(fc2, use_container_width=True)
-                st.caption(f"Fonte: BCB SGS 4389 · Média: {dch['valor'].mean():.2f}% · Máx: {dch['valor'].max():.2f}% · Mín: {dch['valor'].min():.2f}%")
+                st.caption(f"Fonte: BCB SGS 4389 · Média: {dch['valor'].mean():.2f}% · "
+                            f"Máx: {dch['valor'].max():.2f}% · Mín: {dch['valor'].min():.2f}%")
 
     st.divider()
+
+    # ---------- SIMULAÇÕES SALVAS ----------
     st.markdown("### 📂 Simulações Salvas")
     df_sims = carregar_simulacoes_investimento()
+
     if df_sims.empty:
-        st.info("Nenhuma simulação salva. Ajuste os parâmetros e clique em **💾 Salvar esta simulação**.")
+        st.info("Nenhuma simulação salva ainda. Ajuste e clique em **💾 Salvar esta simulação**.")
     else:
         melhor = df_sims.loc[df_sims["montante_final"].idxmax()]
-        st.markdown(f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
+        st.markdown(
+            f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
             f"border-radius:12px;padding:14px 18px;margin-bottom:12px;'>"
             f"<b style='color:{PALETA['texto_principal']};'>📊 {len(df_sims)} simulações salvas</b> · "
             f"<span style='color:{PALETA['texto_secundario']};'>Melhor: "
-            f"<b style='color:{PALETA['verde']};'>{melhor['nome']}</b> com R$ {melhor['montante_final']:,.2f}</span></div>",
-            unsafe_allow_html=True)
-        cols_d = ["id","nome","aporte_mensal","anos","taxa_anual","montante_final","total_investido","juros_totais","criado_em"]
-        if "cdi_taxa_utilizada" in df_sims.columns: cols_d.insert(-1, "cdi_taxa_utilizada")
+            f"<b style='color:{PALETA['verde']};'>{melhor['nome']}</b> com "
+            f"R$ {melhor['montante_final']:,.2f}</span></div>",
+            unsafe_allow_html=True
+        )
+
+        cols_d = ["nome", "aporte_mensal", "anos", "taxa_anual", "montante_final",
+                   "total_investido", "juros_totais", "criado_em"]
+        if "aporte_inicial" in df_sims.columns:
+            cols_d.insert(1, "aporte_inicial")
+        if "cdi_taxa_utilizada" in df_sims.columns:
+            cols_d.insert(-1, "cdi_taxa_utilizada")
+
         ds = df_sims[cols_d].copy()
         ds["aporte_mensal"] = ds["aporte_mensal"].apply(_fmt_brl)
         ds["taxa_anual"] = ds["taxa_anual"].apply(lambda v: f"{v:.2f}%")
@@ -954,18 +1156,26 @@ with tab4:
         ds["juros_totais"] = ds["juros_totais"].apply(_fmt_brl)
         ds["anos"] = ds["anos"].apply(lambda v: f"{int(v)} anos")
         ds["criado_em"] = pd.to_datetime(ds["criado_em"]).dt.strftime("%d/%m/%Y %H:%M")
+        if "aporte_inicial" in ds.columns:
+            ds["aporte_inicial"] = ds["aporte_inicial"].apply(lambda v: _fmt_brl(v) if pd.notnull(v) else "—")
         if "cdi_taxa_utilizada" in ds.columns:
             ds["cdi_taxa_utilizada"] = ds["cdi_taxa_utilizada"].apply(lambda v: f"{v:.2f}%" if pd.notnull(v) else "—")
-            ds.columns = ["ID","Nome","Aporte Mensal","Prazo","Taxa Anual","Montante Final","Total Investido","Juros","CDI Base","Salvo em"]
-        else:
-            ds.columns = ["ID","Nome","Aporte Mensal","Prazo","Taxa Anual","Montante Final","Total Investido","Juros","Salvo em"]
-        st.dataframe(ds.drop(columns=["ID"]), use_container_width=True, hide_index=True)
-        fc3 = px.bar(df_sims.sort_values("montante_final"), x="montante_final", y="nome", orientation="h",
-            color="montante_final", color_continuous_scale=["#3B82F6","#22C55E"],
-            labels={"montante_final":"Montante Final (R$)","nome":""})
+
+        ren = {"nome":"Nome","aporte_inicial":"Aporte Inicial","aporte_mensal":"Aporte Mensal Médio",
+               "anos":"Prazo","taxa_anual":"Taxa","montante_final":"Montante Final",
+               "total_investido":"Investido","juros_totais":"Juros",
+               "cdi_taxa_utilizada":"CDI Base","criado_em":"Salvo em"}
+        ds = ds.rename(columns=ren)
+        st.dataframe(ds, use_container_width=True, hide_index=True)
+
+        fc3 = px.bar(df_sims.sort_values("montante_final"), x="montante_final", y="nome",
+                      orientation="h", color="montante_final",
+                      color_continuous_scale=["#3B82F6", "#22C55E"],
+                      labels={"montante_final": "Montante Final (R$)", "nome": ""})
         fc3.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3",
-            showlegend=False, coloraxis_showscale=False, height=max(200,60*len(df_sims)))
+            showlegend=False, coloraxis_showscale=False, height=max(200, 60 * len(df_sims)))
         st.plotly_chart(fc3, use_container_width=True)
+
         st.markdown("#### 🗑️ Excluir")
         cds = st.columns(min(4, len(df_sims)))
         for i, (_, s) in enumerate(df_sims.iterrows()):
@@ -973,6 +1183,9 @@ with tab4:
                 if st.button(f"🗑️ {s['nome'][:20]}", key=f"del_sim_{s['id']}", use_container_width=True):
                     remover_simulacao_investimento(s["id"]); st.rerun()
 
+# =============================================================================
+# TAB 5
+# =============================================================================
 with tab5:
     st.subheader("📊 DRE Gerencial & Análise de Lucratividade")
     receita = salario_a_input + vr_a_input
@@ -999,6 +1212,9 @@ with tab5:
         st.warning(f"⚠️ Maior ralo: **{mg['categoria']}** consumiu **R$ {mg['valor']:,.2f}**.".replace('.', '#').replace(',', '.').replace('#', ','))
     else: st.success("🟢 Nenhuma distorção.")
 
+# =============================================================================
+# TAB 6
+# =============================================================================
 with tab6:
     st.subheader("📑 Central de Relatórios em PDF")
     pdf_bytes = gerar_relatorio_pdf(df_gastos_fixos, df_variaveis, salario_a_input, salario_b_input, aluguel_a, aluguel_b)
@@ -1006,6 +1222,9 @@ with tab6:
         file_name=f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.pdf",
         mime="application/pdf", use_container_width=True)
 
+# =============================================================================
+# TAB 7
+# =============================================================================
 with tab7:
     st.subheader("📅 Relatório Mensal & Orçamento por Mês")
     hoje = datetime.now()
@@ -1074,7 +1293,7 @@ with tab7:
     else: st.info("Nenhum mês registrado.")
 
 # =============================================================================
-# TAB 8 — CORTES (COMPLETO)
+# TAB 8 — CORTES INTELIGENTES
 # =============================================================================
 with tab8:
     st.subheader("✂️ Cortes Inteligentes")
@@ -1083,7 +1302,6 @@ with tab8:
     BENCH = {"Lazer / Passeios":8.0,"Farmácia / Saúde":5.0,"Vestuário":5.0,"Imprevistos":10.0,
              "Outros":5.0,"Internet":3.0,"Recarga celular":2.0,"Corte de cabelo":2.0,
              "Cartão de crédito":10.0,"Alimentação":15.0,"Transporte":10.0,"Moradia":30.0}
-
     ESFORCO = {"Lazer / Passeios":"Fácil","Vestuário":"Fácil","Outros":"Fácil","Recarga celular":"Fácil",
                "Corte de cabelo":"Médio","Farmácia / Saúde":"Médio","Imprevistos":"Médio",
                "Internet":"Médio","Cartão de crédito":"Médio","Alimentação":"Médio","Transporte":"Médio","Moradia":"Difícil"}
@@ -1103,7 +1321,7 @@ with tab8:
                 f"<b>{peso:.1f}%</b> da renda. Ideal: máx <b>{bench:.0f}%</b> (R$ {vi:,.2f}). "
                 f"Excesso de <b>{ep:.1f} p.p.</b> = <b>R$ {ex:,.2f}/mês</b>.<br><br>"
                 f"<b>Por quê?</b> {ac}<br><br><b>Ganho:</b> reduzindo R$ {cs:,.2f}/mês libera "
-                f"<b>R$ {cs*12:,.2f}/ano</b> — vai para reserva/investimentos.{ir}<br><br>"
+                f"<b>R$ {cs*12:,.2f}/ano</b>.{ir}<br><br>"
                 f"<b>Impacto renda:</b> {ird:.2f}% da receita mensal.")
 
     def _prog_meta(cat, pct, df):
@@ -1376,7 +1594,7 @@ Atual: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['valor_atual'])
                     st.plotly_chart(fe, use_container_width=True, key=f"ev_{s['categoria_limpa']}")
                 rt = _retro(s['categoria_limpa'], df_variaveis)
                 if rt:
-                    st.warning(f"⚠️ '{s['categoria_limpa']}' subiu {rt['var']}% vs mês ant. ({_fmt_brl(rt['anterior'])} → {_fmt_brl(rt['atual'])})")
+                    st.warning(f"⚠️ '{s['categoria_limpa']}' subiu {rt['var']}% vs mês ant.")
                 st.markdown("---")
                 if jc:
                     st.success("✅ Corte já marcado.")
@@ -1486,7 +1704,7 @@ Atual: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['valor_atual'])
             Spacer(1, 15)]
         data = [["#", "Categoria", "Atual", "Corte/mês", "Economia/ano"]]
         for _, s in df_sug.iterrows():
-            data.append([str(int(s['prioridade'])), str(s['cat'] if 'cat' in s else s['categoria_limpa']),
+            data.append([str(int(s['prioridade'])), str(s['categoria_limpa']),
                 f"R$ {s['valor_atual']:,.2f}", f"R$ {s['corte_sugerido']:,.2f}", f"R$ {s['economia_potencial']:,.2f}"])
         tv_ = Table(data, colWidths=[25, 130, 100, 100, 120])
         tv_.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#151B23')),
@@ -1539,7 +1757,7 @@ Atual: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['valor_atual'])
     else: st.info("Nenhuma análise salva.")
 
 # =============================================================================
-# TAB 9 — PROSPERIDADE (COMPLETO — 9 seções)
+# TAB 9 — PROSPERIDADE
 # =============================================================================
 with tab9:
     st.subheader("🚀 Painel de Prosperidade")
@@ -1714,7 +1932,7 @@ with tab9:
             st.markdown(f"<div style='background:{PALETA['fundo_card']};border-left:4px solid {PALETA['roxo']};"
                 f"border-radius:12px;padding:18px 22px;margin-top:16px;'>"
                 f"<b style='color:{PALETA['texto_principal']};font-size:15px;'>🎉 Com {_fmt_brl(f['numero_magico'])} investidos, "
-                f"retira {_fmt_brl(f['retirada_mensal_segura'])}/mês para sempre — sem trabalhar.</b></div>",
+                f"retira {_fmt_brl(f['retirada_mensal_segura'])}/mês para sempre.</b></div>",
                 unsafe_allow_html=True)
             if pa_ < f["numero_magico"]:
                 st.divider()
@@ -1885,5 +2103,5 @@ with tab9:
                         if st.button("🗑️", key=f"dc_{ct['id']}"): remover_conta_pagar(ct['id']); st.rerun()
 
 # =============================================================================
-# FIM DO APLICATIVO
+# FIM
 # =============================================================================
