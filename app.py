@@ -512,10 +512,9 @@ def remover_despesa_variavel(despesa_id):
             pass
 
 # -----------------------------------------------------------------------------
-# NOVAS FUNÇÕES — ORÇAMENTO E RELATÓRIO MENSAL (não altera o que já existe)
+# FUNÇÕES — ORÇAMENTO E RELATÓRIO MENSAL
 # -----------------------------------------------------------------------------
 def carregar_orcamento_mes(mes, ano):
-    """Carrega o orçamento do mês/ano. Se não existir, cria um novo zerado."""
     if supabase:
         try:
             res = supabase.table("orcamentos_mensais").select("*") \
@@ -556,7 +555,6 @@ def fechar_mes(mes, ano):
             pass
 
 def carregar_despesas_por_mes(mes, ano):
-    """Filtra despesas variáveis apenas do mês/ano selecionado."""
     if supabase:
         try:
             res = supabase.table("despesas_variaveis").select("*") \
@@ -659,7 +657,7 @@ def gerar_relatorio_mensal_pdf(mes, ano, df_mes, orcamento):
     return buffer.getvalue()
 
 # -----------------------------------------------------------------------------
-# FUNÇÃO GERADORA DE RELATÓRIO PDF (SEPARADO POR GASTOS E PERDAS)
+# FUNÇÃO GERADORA DE RELATÓRIO PDF (GASTOS E PERDAS)
 # -----------------------------------------------------------------------------
 def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a, aluguel_b):
     buffer = BytesIO()
@@ -738,11 +736,10 @@ def gerar_relatorio_pdf(df_fixos, df_variaveis, salario_a, salario_b, aluguel_a,
     return buffer.getvalue()
 
 # =============================================================================
-# >>> NOVAS FUNÇÕES — CORTES INTELIGENTES DE GASTOS (não altera as anteriores)
+# >>> FUNÇÕES — CORTES INTELIGENTES DE GASTOS
 # =============================================================================
 
 def _fmt_brl(v: float) -> str:
-    """Formata valor em Real brasileiro (helper visual)."""
     try:
         return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except Exception:
@@ -750,7 +747,6 @@ def _fmt_brl(v: float) -> str:
 
 
 def carregar_metas_corte():
-    """Carrega metas de corte cadastradas pelo usuário."""
     if supabase:
         try:
             res = supabase.table("metas_corte").select("*").eq("ativo", True).execute()
@@ -762,7 +758,6 @@ def carregar_metas_corte():
 
 
 def salvar_meta_corte(categoria, meta_reducao_pct):
-    """Insere ou atualiza a meta de corte de uma categoria."""
     if supabase:
         try:
             existente = supabase.table("metas_corte").select("id") \
@@ -784,7 +779,6 @@ def salvar_meta_corte(categoria, meta_reducao_pct):
 
 
 def remover_meta_corte(categoria):
-    """Desativa uma meta de corte (soft delete)."""
     if supabase:
         try:
             supabase.table("metas_corte").update({"ativo": False}) \
@@ -794,7 +788,6 @@ def remover_meta_corte(categoria):
 
 
 def salvar_analise_corte(mes, ano, sugestoes):
-    """Persiste uma análise de corte no histórico."""
     if supabase and sugestoes:
         try:
             supabase.table("analises_corte").insert([
@@ -814,7 +807,6 @@ def salvar_analise_corte(mes, ano, sugestoes):
 
 
 def carregar_historico_analises():
-    """Carrega o histórico de análises salvas."""
     if supabase:
         try:
             res = supabase.table("analises_corte").select("*") \
@@ -828,10 +820,60 @@ def carregar_historico_analises():
                                   "prioridade", "criado_em"])
 
 
-def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
-    """
-    Analisa as despesas e gera sugestões de corte priorizadas.
-    """
+def _gerar_explicacao_corte(categoria, valor, peso, benchmark, excesso,
+                             corte_sugerido, tipo, receita_bruta,
+                             meta_reserva_mensal=0.0):
+    """Gera uma explicação detalhada de por que cortar essa categoria."""
+    tipo_txt = "despesa variável" if tipo == "Variável" else "custo fixo"
+    excesso_pct = peso - benchmark
+    valor_ideal = receita_bruta * benchmark / 100
+
+    if excesso_pct >= 10:
+        nivel, emoji = "CRÍTICO", "🚨"
+        acao = ("Essa categoria está muito acima do recomendado e compromete "
+                "seriamente seu equilíbrio financeiro. Precisa de revisão imediata.")
+    elif excesso_pct >= 5:
+        nivel, emoji = "ALTO", "⚠️"
+        acao = ("Essa categoria precisa de atenção agora. Reduzir evita que o "
+                "problema cresça nos próximos meses.")
+    else:
+        nivel, emoji = "MODERADO", "📌"
+        acao = ("Categoria levemente acima do ideal. Pequenos ajustes já "
+                "trazem resultado sem sacrificar sua qualidade de vida.")
+
+    impacto_reserva = ""
+    if meta_reserva_mensal > 0:
+        pct_reserva = (corte_sugerido / meta_reserva_mensal) * 100
+        impacto_reserva = (
+            f" Esse valor equivale a <b>{pct_reserva:.0f}%</b> da sua meta "
+            f"de reserva mensal (R$ {meta_reserva_mensal:,.2f})."
+        )
+
+    impacto_renda = (corte_sugerido / receita_bruta) * 100 if receita_bruta > 0 else 0
+
+    explicacao = (
+        f"{emoji} <b>Nível de prioridade: {nivel}</b><br><br>"
+        f"Você está gastando <b>R$ {valor:,.2f}</b> em <b>{categoria}</b> "
+        f"({tipo_txt}), o que representa <b>{peso:.1f}%</b> da sua renda bruta. "
+        f"Para essa categoria, o recomendado é no máximo <b>{benchmark:.0f}%</b> "
+        f"(ideal: R$ {valor_ideal:,.2f}). Ou seja, você está "
+        f"<b>{excesso_pct:.1f} pontos percentuais acima do ideal</b>, "
+        f"gerando um excesso de <b>R$ {excesso:,.2f} por mês</b>.<br><br>"
+        f"<b>Por que cortar aqui?</b> {acao}<br><br>"
+        f"<b>O que você ganha:</b> reduzindo <b>R$ {corte_sugerido:,.2f}/mês</b>, "
+        f"você libera <b>R$ {corte_sugerido * 12:,.2f} por ano</b> — dinheiro "
+        f"que pode ir para sua reserva de emergência, investimentos ou "
+        f"quitação de dívidas.{impacto_reserva}<br><br>"
+        f"<b>Impacto na sua renda:</b> esse corte representa "
+        f"<b>{impacto_renda:.2f}%</b> da sua receita bruta mensal — "
+        f"um ajuste real, mas possível, sem comprometer o essencial."
+    )
+    return explicacao
+
+
+def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta,
+                                  meta_reserva_mensal=0.0):
+    """Analisa as despesas e gera sugestões de corte priorizadas com explicações."""
     BENCHMARKS = {
         "Lazer / Passeios":  8.0,
         "Farmácia / Saúde":  5.0,
@@ -852,7 +894,7 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
 
     sugestoes = []
 
-    # --- Analisa DESPESAS VARIÁVEIS ---
+    # --- DESPESAS VARIÁVEIS ---
     if df_variaveis is not None and not df_variaveis.empty:
         grp = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
         for _, r in grp.iterrows():
@@ -863,6 +905,10 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
             if peso > bench:
                 excesso = val - (receita_bruta * bench / 100)
                 corte_sug = excesso * 0.5
+                explicacao = _gerar_explicacao_corte(
+                    cat, val, peso, bench, excesso, corte_sug, "Variável",
+                    receita_bruta, meta_reserva_mensal
+                )
                 sugestoes.append({
                     "categoria":           f"💳 {cat}",
                     "categoria_limpa":     cat,
@@ -873,9 +919,10 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
                     "excesso":             round(excesso, 2),
                     "corte_sugerido":      round(corte_sug, 2),
                     "economia_potencial":  round(corte_sug * 12, 2),
+                    "explicacao":          explicacao,
                 })
 
-    # --- Analisa GASTOS FIXOS ---
+    # --- GASTOS FIXOS ---
     if df_gastos_fixos is not None and not df_gastos_fixos.empty:
         grp_f = df_gastos_fixos.groupby("descricao")["valor"].sum().reset_index()
         for _, r in grp_f.iterrows():
@@ -886,6 +933,10 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
             if peso > bench:
                 excesso = val - (receita_bruta * bench / 100)
                 corte_sug = excesso * 0.4
+                explicacao = _gerar_explicacao_corte(
+                    cat, val, peso, bench, excesso, corte_sug, "Fixo",
+                    receita_bruta, meta_reserva_mensal
+                )
                 sugestoes.append({
                     "categoria":           f"🔧 {cat}",
                     "categoria_limpa":     cat,
@@ -896,6 +947,7 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
                     "excesso":             round(excesso, 2),
                     "corte_sugerido":      round(corte_sug, 2),
                     "economia_potencial":  round(corte_sug * 12, 2),
+                    "explicacao":          explicacao,
                 })
 
     if not sugestoes:
@@ -908,7 +960,7 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta):
 
 
 def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual):
-    """Gera PDF executivo do plano de cortes inteligentes."""
+    """Gera PDF executivo do plano de cortes COM explicações detalhadas."""
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30,
                             leftMargin=30, topMargin=30, bottomMargin=30)
@@ -922,6 +974,8 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
                                    textColor=colors.HexColor('#1F2937'),
                                    spaceBefore=12, spaceAfter=6)
     normal_style = styles['Normal']
+    just_style = ParagraphStyle('J', parent=styles['Normal'], alignment=4,
+                                 fontSize=10, leading=14)
 
     story.append(Paragraph("<b>INVEST CONTROL PRO - PLANO DE CORTES INTELIGENTES</b>", title_style))
     story.append(Paragraph(
@@ -931,7 +985,6 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
     ))
     story.append(Spacer(1, 15))
 
-    # ---------- 1. Resumo Executivo ----------
     story.append(Paragraph("<b>1. Resumo Executivo</b>", heading_style))
     resumo = [
         ["Indicador", "Valor"],
@@ -949,7 +1002,6 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
     story.append(t_resumo)
     story.append(Spacer(1, 15))
 
-    # ---------- 2. Ranking ----------
     story.append(Paragraph("<b>2. Ranking de Prioridades de Corte</b>", heading_style))
     data = [["#", "Categoria", "Tipo", "Atual (R$)", "Peso (%)",
              "Corte/mes (R$)", "Economia Anual (R$)"]]
@@ -975,13 +1027,37 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
     story.append(tv)
     story.append(Spacer(1, 15))
 
-    # ---------- 3. Plano de Ação ----------
-    story.append(Paragraph("<b>3. Plano de Acao Recomendado (Top 5)</b>", heading_style))
+    story.append(Paragraph("<b>3. Justificativa Detalhada de Cada Corte</b>", heading_style))
+    story.append(Paragraph(
+        "Abaixo está o motivo de cada categoria ter sido sinalizada, "
+        "quanto você economiza e o impacto esperado na sua renda.",
+        just_style
+    ))
+    story.append(Spacer(1, 10))
+
+    for _, s in df_sug.iterrows():
+        texto_puro = s['explicacao']
+        texto_puro = texto_puro.replace("<b>", "").replace("</b>", "")
+        texto_puro = texto_puro.replace("<br><br>", " ").replace("<br>", " ")
+        for emo in ["🚨", "⚠️", "📌"]:
+            texto_puro = texto_puro.replace(emo, "")
+        texto_puro = texto_puro.strip()
+
+        story.append(Paragraph(
+            f"<b>#{int(s['prioridade'])} - {s['categoria_limpa']} "
+            f"({s['tipo']})</b>",
+            ParagraphStyle('CatHead', parent=styles['Heading3'], fontSize=11,
+                           textColor=colors.HexColor('#1F2937'), spaceAfter=4)
+        ))
+        story.append(Paragraph(texto_puro, just_style))
+        story.append(Spacer(1, 10))
+
+    story.append(Paragraph("<b>4. Plano de Acao Recomendado (Top 5)</b>", heading_style))
     story.append(Paragraph(
         "Comece pelas categorias de maior prioridade. Aplicar os cortes "
         "sugeridos gera a economia anual indicada, que pode ser "
         "redirecionada para a reserva de emergencia ou investimentos.",
-        normal_style
+        just_style
     ))
     story.append(Spacer(1, 8))
 
@@ -993,7 +1069,7 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
             f"<b>R$ {nova_meta:,.2f}</b> "
             f"(corte de R$ {s['corte_sugerido']:,.2f}/mes, "
             f"economia anual de R$ {s['economia_potencial']:,.2f})",
-            normal_style
+            just_style
         ))
         story.append(Spacer(1, 4))
 
@@ -1002,7 +1078,7 @@ def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual
     return buffer.getvalue()
 
 # =============================================================================
-# >>> FIM DAS NOVAS FUNÇÕES
+# >>> FIM DAS FUNÇÕES DE CORTES
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -1137,7 +1213,7 @@ col4.metric("Aporte Reserva Mensal", f"- R$ {meta_reserva_efetiva:,.2f}".replace
 
 st.divider()
 
-# ABAS DO APLICATIVO (8 abas com "Cortes Inteligentes")
+# ABAS DO APLICATIVO
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📌 Planejamento & Cenários",
     "💳 Controle de Gastos Diários",
@@ -1353,9 +1429,6 @@ with tab6:
         use_container_width=True
     )
 
-# -----------------------------------------------------------------------------
-# ABA — RELATÓRIO MENSAL (não altera o que já existe)
-# -----------------------------------------------------------------------------
 with tab7:
     st.subheader("📅 Relatório Mensal & Orçamento por Mês")
     st.markdown("Cada mês possui seu **próprio orçamento**. As despesas são filtradas automaticamente pelo mês selecionado.")
@@ -1485,22 +1558,25 @@ with tab7:
         st.info("Nenhum mês registrado ainda.")
 
 # =============================================================================
-# NOVA ABA — CORTES INTELIGENTES DE GASTOS
+# ABA — CORTES INTELIGENTES DE GASTOS
 # =============================================================================
 with tab8:
     st.subheader("✂️ Cortes Inteligentes — Onde você deve economizar")
     st.markdown(
         "Análise automática das suas despesas com base em **benchmarks saudáveis** por categoria. "
-        "A prioridade é definida pelo **impacto anual** da economia potencial."
+        "A prioridade é definida pelo **impacto anual** da economia potencial. "
+        "Cada sugestão traz uma **explicação detalhada do porquê cortar**."
     )
 
     receita_bruta_corte = salario_a_input + vr_a_input
-    df_sug = analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta_corte)
+    df_sug = analisar_cortes_inteligentes(
+        df_variaveis, df_gastos_fixos, receita_bruta_corte,
+        meta_reserva_mensal=meta_reserva_efetiva
+    )
 
     if df_sug.empty:
         st.success("🟢 Excelente! Nenhuma categoria está acima do benchmark saudável. Continue assim!")
     else:
-        # ---------- KPIs ----------
         total_anual = df_sug["economia_potencial"].sum()
         total_mensal = df_sug["corte_sugerido"].sum()
         top_cat = df_sug.iloc[0]
@@ -1512,9 +1588,8 @@ with tab8:
 
         st.divider()
 
-        # ---------- Ranking visual ----------
         st.markdown("### 🏆 Ranking de Prioridades de Corte")
-        st.caption("Ordenado por maior impacto anual. Comece pelos primeiros para resultado rápido.")
+        st.caption("Ordenado por maior impacto anual. Expanda cada item para ver o motivo detalhado.")
 
         for _, s in df_sug.iterrows():
             cor = "#EF4444" if s["prioridade"] <= 2 else ("#F59E0B" if s["prioridade"] <= 4 else "#3B82F6")
@@ -1545,9 +1620,19 @@ with tab8:
 """
             st.markdown(card_html, unsafe_allow_html=True)
 
+            with st.expander(f"📖 Por que cortar em {s['categoria_limpa']}? (ver explicação)", expanded=False):
+                st.markdown(
+                    f"<div style='background:{PALETA['fundo_sidebar']};"
+                    f"border:1px solid {PALETA['borda']};border-radius:10px;"
+                    f"padding:16px 20px;color:{PALETA['texto_principal']};"
+                    f"font-size:13px;line-height:1.6;'>"
+                    f"{s['explicacao']}"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
         st.divider()
 
-        # ---------- Gráficos ----------
         col_gc1, col_gc2 = st.columns(2)
         with col_gc1:
             st.markdown("#### 📊 Peso Atual vs. Benchmark Saudável")
@@ -1579,9 +1664,6 @@ with tab8:
 
         st.divider()
 
-        # =====================================================
-        # PROJEÇÃO DE ECONOMIA ACUMULADA (24 MESES)
-        # =====================================================
         st.markdown("### 📈 Projeção de Economia Acumulada")
         st.caption("Evolução da economia mês a mês se os cortes sugeridos forem aplicados a partir do mês 1.")
 
@@ -1612,7 +1694,6 @@ with tab8:
         df_proj_eco = pd.DataFrame({
             "Mês": lista_eixo,
             "Economia Acumulada": economia_acumulada,
-            "Economia Sem Cortes": [0.0] * horizonte
         })
 
         fig_proj_eco = px.area(
@@ -1635,7 +1716,6 @@ with tab8:
 
         st.divider()
 
-        # ---------- Tabela detalhada ----------
         st.markdown("#### 📋 Detalhamento Completo das Sugestões")
         df_det = df_sug[["prioridade", "categoria", "tipo", "valor_atual",
                           "peso_receita", "benchmark_saudavel",
@@ -1647,20 +1727,14 @@ with tab8:
 
         st.divider()
 
-        # =====================================================
-        # EXPORTAR PLANO DE CORTE EM PDF
-        # =====================================================
         st.markdown("### 📄 Exportar Plano de Corte")
-        st.caption("Baixe um PDF executivo com o ranking completo e o plano de ação recomendado.")
+        st.caption("O PDF inclui o ranking, o plano de ação e a explicação de cada corte.")
 
         pdf_corte = gerar_pdf_plano_corte(
-            df_sug,
-            receita_bruta_corte,
-            total_mensal,
-            total_anual
+            df_sug, receita_bruta_corte, total_mensal, total_anual
         )
         st.download_button(
-            label="📥 Baixar Plano de Cortes em PDF",
+            label="📥 Baixar Plano de Cortes em PDF (com explicações)",
             data=pdf_corte,
             file_name=f"Plano_Cortes_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf",
@@ -1670,9 +1744,8 @@ with tab8:
 
         st.divider()
 
-        # ---------- Plano de ação ----------
         st.markdown("### 🎯 Definir Metas de Corte")
-        st.caption("Escolha uma categoria e defina sua meta de redução. O sistema salva no Supabase para acompanhamento.")
+        st.caption("Escolha uma categoria e defina sua meta de redução.")
 
         with st.form("form_meta_corte", clear_on_submit=True):
             fm1, fm2 = st.columns([3, 2])
@@ -1708,7 +1781,6 @@ with tab8:
 
         st.divider()
 
-        # ---------- Salvar análise no histórico ----------
         if st.button("📥 Salvar Análise Atual no Histórico", use_container_width=True):
             hoje_an = datetime.now()
             sugestoes_dict = df_sug.to_dict("records")
@@ -1717,7 +1789,6 @@ with tab8:
 
     st.divider()
 
-    # ---------- Histórico de análises ----------
     st.markdown("### 📜 Histórico de Análises Salvas")
     df_hist_an = carregar_historico_analises()
     if not df_hist_an.empty:
@@ -1732,8 +1803,8 @@ with tab8:
                                  "Prioridade", "Data Análise"]
         st.dataframe(df_hist_show, use_container_width=True, hide_index=True)
     else:
-        st.info("Nenhuma análise salva ainda. Clique em **Salvar Análise Atual no Histórico** para começar.")
+        st.info("Nenhuma análise salva ainda.")
 
 # =============================================================================
-# FIM DA NOVA ABA
+# FIM DO APLICATIVO
 # =============================================================================
