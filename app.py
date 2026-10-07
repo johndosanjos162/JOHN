@@ -1214,3 +1214,182 @@ with tab7:
                      use_container_width=True, hide_index=True)
     else:
         st.info("Nenhum mês registrado ainda.")
+# ABAS DO APLICATIVO (COM A NOVA ABA DE CORTE DE GASTOS)
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "📌 Planejamento", 
+    "💳 Gastos Diários", 
+    "⚙ Custos Fixos", 
+    "📈 Simulador",
+    "📊 DRE & Lucro",
+    "📅 Relatório Mensal",
+    "✂️ IA de Corte de Gastos",
+    "📑 Relatórios PDF"
+])
+
+with tab1:
+    st.subheader("🏠 Divisão e Proporcionalidade do Aluguel")
+    c_d1, c_d2 = st.columns(2)
+    c_d1.info(f"👤 **Pessoa A:** R$ {aluguel_a:,.2f}")
+    if b_participa: c_d2.success(f"👥 **Pessoa B:** R$ {aluguel_b:,.2f}")
+    
+    st.markdown("##### 🗓️ Progresso Anual da Reserva de Emergência")
+    cols_grid = st.columns(4)
+    meses_concluidos_count = sum(1 for i in range(12) if st.checkbox(f"{i+1}. {meses_nomes[i]}", key=f"reserva_mes_{i+1}"))
+    pct_concluido = meses_concluidos_count / 12.0
+    st.progress(pct_concluido)
+    st.write(f"**Progresso:** {meses_concluidos_count}/12 meses (**{pct_concluido*100:.1f}%**)")
+
+with tab2:
+    st.subheader("🛒 Despesas Variáveis do Mês Corrente")
+    col_lim1, col_lim2, col_lim3 = st.columns(3)
+    col_lim1.metric("Orçamento do Mês", f"R$ {orcamento_limite_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim2.metric("Total Já Gasto", f"- R$ {total_gastos_mes_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim3.metric("Saldo Restante", f"R$ {saldo_caixa_restante:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    
+    with st.form("form_despesa", clear_on_submit=True):
+        f1, f2, f3, f4 = st.columns([2, 3, 2, 2])
+        d_exp = f1.date_input("Data")
+        desc_exp = f2.text_input("Descrição")
+        cat_exp = f3.selectbox("Categoria", ["Lazer / Passeios", "Farmácia / Saúde", "Vestuário", "Imprevistos", "Outros"])
+        val_exp = f4.number_input("Valor (R$)", min_value=0.01, step=10.0)
+        if st.form_submit_button("Lançar Despesa"):
+            if desc_exp:
+                adicionar_despesa_variavel(d_exp, desc_exp, cat_exp, val_exp)
+                st.success("Lançado com sucesso no mês correspondente à data!")
+                st.rerun()
+
+    if not df_variaveis_mes_atual.empty:
+        for _, row in df_variaveis_mes_atual.iterrows():
+            rc1, rc2, rc3, rc4, rc5 = st.columns([2, 3, 2, 2, 1])
+            rc1.write(row["data"].strftime("%d/%m/%Y"))
+            rc2.write(row["descricao"])
+            rc3.write(row["categoria"])
+            rc4.write(f"R$ {row['valor']:,.2f}")
+            if rc5.button("🗑️", key=f"del_v_{row['id']}"):
+                remover_despesa_variavel(row["id"])
+                st.rerun()
+
+with tab3:
+    st.subheader("📋 Custos Fixos")
+    cf1, cf2 = st.columns([2, 1])
+    with cf1:
+        if not df_gastos_fixos.empty:
+            for _, row in df_gastos_fixos.iterrows():
+                fc1, fc2, fc3 = st.columns([3, 2, 1])
+                fc1.write(row['descricao'])
+                fc2.write(f"R$ {row['valor']:,.2f}")
+                if fc3.button("Excluir", key=f"del_f_{row['id']}"):
+                    remover_gasto_fixo(row['id'])
+                    st.rerun()
+    with cf2:
+        with st.form("form_fixo", clear_on_submit=True):
+            dfix = st.text_input("Descrição")
+            vfix = st.number_input("Valor", min_value=0.01)
+            if st.form_submit_button("Adicionar"):
+                if dfix:
+                    adicionar_gasto_fixo(dfix, vfix)
+                    st.rerun()
+
+with tab4:
+    st.subheader("📈 Simulador de Juros Compostos")
+    s_ap = st.number_input("Aporte", value=float(meta_reserva_efetiva), step=50.0)
+    s_anos = st.slider("Anos", 1, 30, 5)
+    s_tx = st.slider("Taxa Anual (%)", 1.0, 20.0, 10.0)
+    montante = sum((s_ap * 12) * ((1 + s_tx/100) ** a) for a in range(s_anos))
+    st.metric("Patrimônio Projetado", f"R$ {montante:,.2f}")
+
+with tab5:
+    st.subheader("📊 DRE & Análise de Lucro")
+    rec_b = salario_a_input + vr_a_input
+    lucro_op = rec_b - total_fixos_a - total_gastos_mes_atual
+    st.metric("Lucro Líquido Operacional", f"R$ {lucro_op:,.2f}")
+
+with tab6:
+    st.subheader("📅 Relatório Mensal & Orçamento por Período")
+    col_mo1, col_mo2 = st.columns(2)
+    with col_mo1:
+        st.markdown(f"#### Orçamento Vigente ({ano_mes_atual})")
+        novo_limite_input = st.number_input("Definir Limite Orçamentário deste Mês (R$)", value=float(orcamento_limite_atual), step=50.0)
+        if st.button("Atualizar Orçamento do Mês"):
+            atualizar_orcamento_mensal(ano_mes_atual, novo_limite_input)
+            st.success("Orçamento atualizado!")
+            st.rerun()
+    with col_mo2:
+        st.markdown("#### Resumo do Ciclo")
+        st.write(f"**Total Gasto:** R$ {total_gastos_mes_atual:,.2f}")
+        st.write(f"**Status:** {'🟢 Dentro do Orçamento' if saldo_caixa_restante >= 0 else '🔴 Acima do Orçamento'}")
+
+    st.divider()
+    st.markdown("#### 📂 Histórico de Relatórios Mensais Fechados")
+    relatorios_anteriores = listar_relatorios_fechados()
+    if relatorios_anteriores:
+        for rel in relatorios_anteriores:
+            with st.expander(f"Mês: {rel['ano_mes']} | Status: {rel['status_final']} | Gasto: R$ {rel['gasto_total']:,.2f}"):
+                st.write(f"**Orçamento Limite:** R$ {rel['orcamento_total']:,.2f}")
+                st.write(f"**Total Gasto:** R$ {rel['gasto_total']:,.2f}")
+    else:
+        st.info("Nenhum relatório fechado anterior.")
+
+# --- NOVA ABA 7: INTELIGÊNCIA DE CORTE DE GASTOS ---
+with tab7:
+    st.subheader("✂️ IA de Corte de Gastos & Otimização de Caixa")
+    st.markdown("Análise automática das suas despesas do mês atual para identificar os maiores ralos de dinheiro e indicar onde realizar cortes estratégicos.")
+
+    if not df_variaveis_mes_atual.empty:
+        # Agrupa gastos por categoria no mês atual
+        df_cortes = df_variaveis_mes_atual.groupby("categoria")["valor"].sum().reset_index()
+        df_cortes = df_cortes.sort_values(by="valor", ascending=False)
+        
+        maior_gasto_cat = df_cortes.iloc[0]["categoria"]
+        maior_gasto_val = df_cortes.iloc[0]["valor"]
+        
+        st.warning(f"🚨 **Principal Ralo de Caixa Detectado:** A categoria **{maior_gasto_cat}** é a que está drenando mais recursos neste mês, acumulando **R$ {maior_gasto_val:,.2f}** ({ (maior_gasto_val/total_gastos_mes_atual)*100:.1f}% do total gasto).")
+        
+        st.divider()
+        st.markdown("#### 💡 Simulação de Cenários de Corte de Gastos")
+        
+        col_c1, col_c2, col_c3 = st.columns(3)
+        
+        corte_10 = maior_gasto_val * 0.10
+        corte_15 = maior_gasto_val * 0.15
+        corte_20 = maior_gasto_val * 0.20
+        
+        col_c1.metric("Corte de 10% em " + maior_gasto_cat, f"Economia: R$ {corte_10:,.2f}", delta=f"Novo Total: R$ {maior_gasto_val - corte_10:,.2f}")
+        col_c2.metric("Corte de 15% em " + maior_gasto_cat, f"Economia: R$ {corte_15:,.2f}", delta=f"Novo Total: R$ {maior_gasto_val - corte_15:,.2f}")
+        col_c3.metric("Corte de 20% em " + maior_gasto_cat, f"Economia: R$ {corte_20:,.2f}", delta=f"Novo Total: R$ {maior_gasto_val - corte_20:,.2f}")
+
+        st.markdown("---")
+        st.markdown("#### 📋 Detalhamento de Impacto por Categoria")
+        
+        # Exibe tabela formatada com sugestões de corte por categoria
+        tabela_sugestoes = []
+        for _, row in df_cortes.iterrows():
+            cat = row["categoria"]
+            val = row["valor"]
+            tabela_sugestoes.append({
+                "Categoria": cat,
+                "Gasto Atual": f"R$ {val:,.2f}",
+                "Sugestão Corte (10%)": f"Economia de R$ {val * 0.10:,.2f}",
+                "Sugestão Corte (20%)": f"Economia de R$ {val * 0.20:,.2f}"
+            })
+        
+        st.table(pd.DataFrame(tabela_sugestoes))
+        
+        if saldo_caixa_restante < 0:
+            st.error(f"⚠️ **Atenção:** Você está estourado em R$ {abs(saldo_caixa_restante):,.2f} neste mês. Para equilibrar as contas, você precisa reduzir pelo menos esse valor das categorias acima.")
+        else:
+            st.success("🟢 Seu orçamento está equilibrado. Aplicar cortes nestas categorias aumentará diretamente o seu potencial de investimento e reserva!")
+            
+    else:
+        st.info("🟢 Nenhuma despesa variável lançada no mês atual para gerar recomendações de corte.")
+
+with tab8:
+    st.subheader("📑 Relatórios PDF")
+    pdf_bytes = gerar_relatorio_pdf(df_gastos_fixos, df_variaveis_mes_atual, salario_a_input, salario_b_input, aluguel_a, aluguel_b)
+    st.download_button(
+        label="📥 Baixar Relatório em PDF",
+        data=pdf_bytes,
+        file_name=f"Relatorio_{datetime.now().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
