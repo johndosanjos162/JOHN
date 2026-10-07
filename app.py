@@ -625,75 +625,68 @@ def analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta, m
     df_sug["prioridade"] = df_sug.index + 1
     return df_sug
 
-def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual):
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-    story = []
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('T', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#3B82F6'), spaceAfter=12, alignment=1)
-    heading_style = ParagraphStyle('H', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#1F2937'), spaceBefore=12, spaceAfter=6)
-    normal_style = styles['Normal']
-    just_style = ParagraphStyle('J', parent=styles['Normal'], alignment=4, fontSize=10, leading=14)
+# =============================================================================
+# NOVA FUNÇÃO — META IDEAL DE POUPANÇA
+# =============================================================================
 
-    story.append(Paragraph("<b>INVEST CONTROL PRO - PLANO DE CORTES INTELIGENTES</b>", title_style))
-    story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('S', parent=normal_style, alignment=1, textColor=colors.HexColor('#8B949E'))))
-    story.append(Spacer(1, 15))
+def calcular_meta_poupanca_ideal(receita_bruta, total_fixos, total_variaveis,
+                                  meta_reserva_atual, taxa_ideal=0.20):
+    if receita_bruta <= 0:
+        return None
 
-    story.append(Paragraph("<b>1. Resumo Executivo</b>", heading_style))
-    resumo = [["Indicador", "Valor"], ["Receita Bruta Considerada", f"R$ {receita_bruta:,.2f}"],
-              ["Economia Mensal Potencial", f"R$ {economia_mensal:,.2f}"],
-              ["Economia Anual Projetada", f"R$ {economia_anual:,.2f}"],
-              ["Categorias com Excesso", f"{len(df_sug)}"]]
-    t_resumo = Table(resumo, colWidths=[250, 200])
-    t_resumo.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#151B23')),
-                                   ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#E6EDF3')),
-                                   ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36'))]))
-    story.append(t_resumo)
-    story.append(Spacer(1, 15))
+    meta_ideal_valor   = receita_bruta * taxa_ideal
+    poupanca_atual     = max(0.0, meta_reserva_atual)
+    falta_valor        = max(0.0, meta_ideal_valor - poupanca_atual)
+    poupanca_atual_pct = (poupanca_atual / receita_bruta) * 100
+    meta_ideal_pct     = taxa_ideal * 100
+    falta_pct          = meta_ideal_pct - poupanca_atual_pct
+    progresso          = min(1.0, poupanca_atual / meta_ideal_valor) if meta_ideal_valor > 0 else 0.0
 
-    story.append(Paragraph("<b>2. Ranking de Prioridades de Corte</b>", heading_style))
-    data = [["#", "Categoria", "Tipo", "Atual (R$)", "Peso (%)", "Corte/mes (R$)", "Economia Anual (R$)"]]
+    if progresso >= 1.0:
+        status_cor, status_emoji, status_txt = "#22C55E", "🟢", "Meta atingida"
+    elif progresso >= 0.5:
+        status_cor, status_emoji, status_txt = "#F59E0B", "🟡", "No caminho"
+    else:
+        status_cor, status_emoji, status_txt = "#EF4444", "🔴", "Abaixo do ideal"
+
+    return {
+        "meta_ideal_valor":   round(meta_ideal_valor, 2),
+        "meta_ideal_pct":     round(meta_ideal_pct, 1),
+        "poupanca_atual":     round(poupanca_atual, 2),
+        "poupanca_atual_pct": round(poupanca_atual_pct, 1),
+        "falta_valor":        round(falta_valor, 2),
+        "falta_pct":          round(falta_pct, 1),
+        "progresso":          round(progresso, 3),
+        "status_cor":         status_cor,
+        "status_emoji":       status_emoji,
+        "status_txt":         status_txt,
+    }
+
+
+def calcular_poupanca_por_categoria(df_sug, receita_bruta):
+    if df_sug.empty:
+        return pd.DataFrame()
+    linhas = []
     for _, s in df_sug.iterrows():
-        data.append([str(int(s['prioridade'])), str(s['categoria']), str(s['tipo']),
-                     f"{s['valor_atual']:,.2f}", f"{s['peso_receita']}%",
-                     f"{s['corte_sugerido']:,.2f}", f"{s['economia_potencial']:,.2f}"])
-    tv = Table(data, colWidths=[22, 120, 55, 75, 55, 75, 95])
-    tv.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
-                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36')),
-                            ('FONTSIZE', (0, 0), (-1, -1), 8),
-                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
-                            ('ALIGN', (3, 1), (-1, -1), 'RIGHT')]))
-    story.append(tv)
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph("<b>3. Justificativa Detalhada de Cada Corte</b>", heading_style))
-    story.append(Paragraph("Abaixo está o motivo de cada categoria ter sido sinalizada, quanto você economiza e o impacto esperado na sua renda.", just_style))
-    story.append(Spacer(1, 10))
-
-    for _, s in df_sug.iterrows():
-        texto_puro = s['explicacao'].replace("<b>", "").replace("</b>", "").replace("<br><br>", " ").replace("<br>", " ")
-        for emo in ["🚨", "⚠️", "📌"]:
-            texto_puro = texto_puro.replace(emo, "")
-        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria_limpa']} ({s['tipo']})</b>",
-                                ParagraphStyle('CH', parent=styles['Heading3'], fontSize=11, textColor=colors.HexColor('#1F2937'), spaceAfter=4)))
-        story.append(Paragraph(texto_puro.strip(), just_style))
-        story.append(Spacer(1, 10))
-
-    story.append(Paragraph("<b>4. Plano de Acao Recomendado (Top 5)</b>", heading_style))
-    story.append(Paragraph("Comece pelas categorias de maior prioridade. Aplicar os cortes sugeridos gera a economia anual indicada, que pode ser redirecionada para a reserva de emergencia ou investimentos.", just_style))
-    story.append(Spacer(1, 8))
-    for _, s in df_sug.head(5).iterrows():
-        nova_meta = s['valor_atual'] - s['corte_sugerido']
-        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria']}:</b> Reduzir de <b>R$ {s['valor_atual']:,.2f}</b> para aproximadamente <b>R$ {nova_meta:,.2f}</b> (corte de R$ {s['corte_sugerido']:,.2f}/mes, economia anual de R$ {s['economia_potencial']:,.2f})", just_style))
-        story.append(Spacer(1, 4))
-
-    doc.build(story)
-    buffer.seek(0)
-    return buffer.getvalue()
+        valor_atual   = float(s["valor_atual"])
+        valor_ideal   = receita_bruta * float(s["benchmark_saudavel"]) / 100
+        reduzir_valor = max(0.0, valor_atual - valor_ideal)
+        reduzir_pct   = (reduzir_valor / valor_atual * 100) if valor_atual > 0 else 0
+        linhas.append({
+            "Categoria":        s["categoria_limpa"],
+            "Tipo":             s["tipo"],
+            "Gasto Atual (R$)": round(valor_atual, 2),
+            "Ideal (R$)":       round(valor_ideal, 2),
+            "Reduzir (R$)":     round(reduzir_valor, 2),
+            "Reduzir (%)":      round(reduzir_pct, 1),
+            "Peso Atual (%)":   s["peso_receita"],
+            "Peso Ideal (%)":   s["benchmark_saudavel"],
+        })
+    df = pd.DataFrame(linhas).sort_values("Reduzir (R$)", ascending=False).reset_index(drop=True)
+    return df
 
 # =============================================================================
-# FUNÇÕES — 13 NOVAS AÇÕES DE CORTE
+# FUNÇÕES — 13 AÇÕES DE CORTE
 # =============================================================================
 
 ESFORCO_POR_CATEGORIA = {
@@ -710,7 +703,7 @@ def calcular_progresso_meta_corte(categoria_limpa, meta_pct, df_todas_despesas):
     df = df_todas_despesas.copy()
     df['data'] = pd.to_datetime(df['data'])
     hoje = datetime.now()
-    df_atual = df[(df['data'].dt.month == hoje.month) & (df['data'].dt.year == hoje.year)]
+    df_atual   = df[(df['data'].dt.month == hoje.month) & (df['data'].dt.year == hoje.year)]
     df_passado = df[~((df['data'].dt.month == hoje.month) & (df['data'].dt.year == hoje.year))]
     if df_passado.empty:
         return None
@@ -719,7 +712,7 @@ def calcular_progresso_meta_corte(categoria_limpa, meta_pct, df_todas_despesas):
     if pd.isna(media_passado) or media_passado <= 0:
         return None
     atual = df_atual[df_atual['categoria'] == categoria_limpa]['valor'].sum()
-    alvo = media_passado * (1 - meta_pct / 100)
+    alvo  = media_passado * (1 - meta_pct / 100)
     if atual <= alvo:
         progresso = 1.0
     elif atual >= media_passado:
@@ -751,7 +744,7 @@ def detectar_retrocesso(categoria_limpa, df_todas_despesas):
     df_atual = df[(df['data'].dt.month == hoje.month) & (df['data'].dt.year == hoje.year)]
     mes_ant = (pd.Timestamp(hoje) - pd.DateOffset(months=1)).to_period('M')
     df_anterior = df[df['data'].dt.to_period('M') == mes_ant]
-    val_atual = df_atual[df_atual['categoria'] == categoria_limpa]['valor'].sum()
+    val_atual    = df_atual[df_atual['categoria'] == categoria_limpa]['valor'].sum()
     val_anterior = df_anterior[df_anterior['categoria'] == categoria_limpa]['valor'].sum()
     if val_anterior <= 0 or val_atual <= 0:
         return None
@@ -763,7 +756,7 @@ def detectar_retrocesso(categoria_limpa, df_todas_despesas):
 def simular_corte(valor_atual, percentual):
     economia_mensal = valor_atual * (percentual / 100)
     return {"economia_mensal": round(economia_mensal, 2),
-            "economia_anual": round(economia_mensal * 12, 2)}
+            "economia_anual":  round(economia_mensal * 12, 2)}
 
 def impacto_na_reserva(economia_mensal, meta_reserva, total_fixos):
     if total_fixos <= 0:
@@ -916,6 +909,73 @@ def marcar_item_checklist(item_id, concluida=True):
         except:
             pass
 
+def gerar_pdf_plano_corte(df_sug, receita_bruta, economia_mensal, economia_anual):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    story = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#3B82F6'), spaceAfter=12, alignment=1)
+    heading_style = ParagraphStyle('H', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#1F2937'), spaceBefore=12, spaceAfter=6)
+    normal_style = styles['Normal']
+    just_style = ParagraphStyle('J', parent=styles['Normal'], alignment=4, fontSize=10, leading=14)
+
+    story.append(Paragraph("<b>INVEST CONTROL PRO - PLANO DE CORTES INTELIGENTES</b>", title_style))
+    story.append(Paragraph(f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ParagraphStyle('S', parent=normal_style, alignment=1, textColor=colors.HexColor('#8B949E'))))
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>1. Resumo Executivo</b>", heading_style))
+    resumo = [["Indicador", "Valor"], ["Receita Bruta Considerada", f"R$ {receita_bruta:,.2f}"],
+              ["Economia Mensal Potencial", f"R$ {economia_mensal:,.2f}"],
+              ["Economia Anual Projetada", f"R$ {economia_anual:,.2f}"],
+              ["Categorias com Excesso", f"{len(df_sug)}"]]
+    t_resumo = Table(resumo, colWidths=[250, 200])
+    t_resumo.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#151B23')),
+                                   ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#E6EDF3')),
+                                   ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36'))]))
+    story.append(t_resumo)
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>2. Ranking de Prioridades de Corte</b>", heading_style))
+    data = [["#", "Categoria", "Tipo", "Atual (R$)", "Peso (%)", "Corte/mes (R$)", "Economia Anual (R$)"]]
+    for _, s in df_sug.iterrows():
+        data.append([str(int(s['prioridade'])), str(s['categoria']), str(s['tipo']),
+                     f"{s['valor_atual']:,.2f}", f"{s['peso_receita']}%",
+                     f"{s['corte_sugerido']:,.2f}", f"{s['economia_potencial']:,.2f}"])
+    tv = Table(data, colWidths=[22, 120, 55, 75, 55, 75, 95])
+    tv.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#232B36')),
+                            ('FONTSIZE', (0, 0), (-1, -1), 8),
+                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+                            ('ALIGN', (3, 1), (-1, -1), 'RIGHT')]))
+    story.append(tv)
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>3. Justificativa Detalhada de Cada Corte</b>", heading_style))
+    story.append(Paragraph("Abaixo está o motivo de cada categoria ter sido sinalizada, quanto você economiza e o impacto esperado na sua renda.", just_style))
+    story.append(Spacer(1, 10))
+
+    for _, s in df_sug.iterrows():
+        texto_puro = s['explicacao'].replace("<b>", "").replace("</b>", "").replace("<br><br>", " ").replace("<br>", " ")
+        for emo in ["🚨", "⚠️", "📌"]:
+            texto_puro = texto_puro.replace(emo, "")
+        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria_limpa']} ({s['tipo']})</b>",
+                                ParagraphStyle('CH', parent=styles['Heading3'], fontSize=11, textColor=colors.HexColor('#1F2937'), spaceAfter=4)))
+        story.append(Paragraph(texto_puro.strip(), just_style))
+        story.append(Spacer(1, 10))
+
+    story.append(Paragraph("<b>4. Plano de Acao Recomendado (Top 5)</b>", heading_style))
+    story.append(Paragraph("Comece pelas categorias de maior prioridade. Aplicar os cortes sugeridos gera a economia anual indicada.", just_style))
+    story.append(Spacer(1, 8))
+    for _, s in df_sug.head(5).iterrows():
+        nova_meta = s['valor_atual'] - s['corte_sugerido']
+        story.append(Paragraph(f"<b>#{int(s['prioridade'])} - {s['categoria']}:</b> Reduzir de <b>R$ {s['valor_atual']:,.2f}</b> para aproximadamente <b>R$ {nova_meta:,.2f}</b> (corte de R$ {s['corte_sugerido']:,.2f}/mes, economia anual de R$ {s['economia_potencial']:,.2f})", just_style))
+        story.append(Spacer(1, 4))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
 # -----------------------------------------------------------------------------
 # SIDEBAR
 # -----------------------------------------------------------------------------
@@ -972,7 +1032,7 @@ if st.sidebar.button("💾 Salvar Parâmetros"):
     a_save = aluguel_a_input if edicao_manual else aluguel_input * 0.5
     b_save = aluguel_b_input if edicao_manual else aluguel_input * 0.5
     salvar_configuracoes(aluguel_input, salario_a_input, salario_b_input, vr_a_input, meta_reserva_input, a_save, b_save, edicao_manual)
-    st.sidebar.success("Parâmetros e aluguel customizado salvos no Supabase!")
+    st.sidebar.success("Parâmetros salvos!")
     st.rerun()
 
 # -----------------------------------------------------------------------------
@@ -1037,11 +1097,11 @@ with tab1:
     col_div2.metric("Salário de B", f"+ R$ {salario_b_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ',') if b_participa else "R$ 0,00")
     col_div3.metric("Aluguel Total", f"R$ {aluguel_input:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
     col_val1, col_val2 = st.columns(2)
-    col_val1.info(f"👤 **Pessoa A vai pagar:** - R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_val1.info(f"👤 **Pessoa A vai pagar:** - R$ **{aluguel_a:,.2f}** ({prop_a*100:.1f}% do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
     if b_participa:
-        col_val2.success(f"👥 **Pessoa B vai pagar:** - R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do valor total do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_val2.success(f"👥 **Pessoa B vai pagar:** - R$ **{aluguel_b:,.2f}** ({prop_b*100:.1f}% do aluguel)".replace('.', '#').replace(',', '.').replace('#', ','))
     else:
-        col_val2.warning("⚠️ **Pessoa B:** Sem participação neste cenário (A assume 100%).")
+        col_val2.warning("⚠️ **Pessoa B:** Sem participação (A assume 100%).")
     st.divider()
     col_left, col_right = st.columns([1, 1])
     with col_left:
@@ -1053,10 +1113,10 @@ with tab1:
         fig_pie.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3")
         st.plotly_chart(fig_pie, use_container_width=True)
     with col_right:
-        st.subheader("🛡 Progresso Anual da Reserva de Emergência (12 Meses)")
-        st.write(f"**Aporte Mensal Previsto:** R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        st.write(f"**Meta Anual Acumulada:** R$ {meta_reserva_efetiva * 12:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        st.markdown("##### 🗓️ Status de Pagamento dos Meses:")
+        st.subheader("🛡 Progresso Anual da Reserva")
+        st.write(f"**Aporte Mensal:** R$ {meta_reserva_efetiva:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        st.write(f"**Meta Anual:** R$ {meta_reserva_efetiva * 12:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        st.markdown("##### 🗓️ Status dos Meses:")
         cols_grid = st.columns(4)
         meses_concluidos_count = 0
         for i, nome_mes in enumerate(meses_nomes):
@@ -1073,15 +1133,15 @@ with tab1:
         montante_acumulado_real = meta_reserva_efetiva * meses_concluidos_count
         st.markdown("---")
         st.progress(pct_concluido)
-        st.markdown(f"**Progresso Anual:** {meses_concluidos_count} de 12 meses concluídos (**{pct_concluido * 100:.1f}%**)")
-        st.write(f"Montante total depositado: **R$ {montante_acumulado_real:,.2f}**".replace('.', '#').replace(',', '.').replace('#', ','))
+        st.markdown(f"**Progresso:** {meses_concluidos_count} de 12 meses (**{pct_concluido * 100:.1f}%**)")
+        st.write(f"Total depositado: **R$ {montante_acumulado_real:,.2f}**".replace('.', '#').replace(',', '.').replace('#', ','))
 
 with tab2:
-    st.subheader("🛒 Gerenciamento de Despesas Variáveis do Mês")
+    st.subheader("🛒 Gerenciamento de Despesas Variáveis")
     col_lim1, col_lim2, col_lim3 = st.columns(3)
-    col_lim1.metric("Orçamento Variável Disponível", f"R$ {saldo_para_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-    col_lim2.metric("Total Já Gasto no Mês", f"- R$ {total_gastos_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-    col_lim3.metric("Saldo do Caixa Restante", f"{'+' if saldo_caixa_restante >=0 else '-'} R$ {abs(saldo_caixa_restante):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_caixa_restante >= 0 else "inverse")
+    col_lim1.metric("Orçamento Variável", f"R$ {saldo_para_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim2.metric("Total Gasto", f"- R$ {total_gastos_variaveis:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_lim3.metric("Saldo Restante", f"{'+' if saldo_caixa_restante >=0 else '-'} R$ {abs(saldo_caixa_restante):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_caixa_restante >= 0 else "inverse")
     st.divider()
     with st.expander("➕ Lançar Nova Despesa Variável", expanded=True):
         with st.form("form_despesa", clear_on_submit=True):
@@ -1093,7 +1153,7 @@ with tab2:
             if st.form_submit_button("Lançar Despesa"):
                 if desc_exp:
                     adicionar_despesa_variavel(data_exp, desc_exp, cat_exp, val_exp)
-                    st.success("Despesa lançada com sucesso!")
+                    st.success("Despesa lançada!")
                     st.rerun()
                 else:
                     st.error("Informe uma descrição.")
@@ -1121,11 +1181,11 @@ with tab3:
                     remover_gasto_fixo(row["id"])
                     st.rerun()
     with col_f2:
-        st.write("#### Adicionar Novo Gasto Fixo")
+        st.write("#### Adicionar Gasto Fixo")
         with st.form("form_fixo", clear_on_submit=True):
-            desc_fix = st.text_input("Descrição do Gasto")
+            desc_fix = st.text_input("Descrição")
             val_fix = st.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0)
-            if st.form_submit_button("Cadastrar Gasto Fixo"):
+            if st.form_submit_button("Cadastrar"):
                 if desc_fix:
                     adicionar_gasto_fixo(desc_fix, val_fix)
                     st.rerun()
@@ -1134,10 +1194,10 @@ with tab4:
     st.subheader("📈 Simulador de Crescimento Patrimonial")
     col_sim1, col_sim2 = st.columns(2)
     with col_sim1:
-        aporte_sim = st.number_input("Aporte Mensal Utilizado (R$)", value=float(meta_reserva_efetiva), step=50.0)
-        anos_sim = st.slider("Horizonte de Tempo (Anos)", min_value=1, max_value=30, value=5)
+        aporte_sim = st.number_input("Aporte Mensal (R$)", value=float(meta_reserva_efetiva), step=50.0)
+        anos_sim = st.slider("Horizonte (Anos)", min_value=1, max_value=30, value=5)
     with col_sim2:
-        taxa_anual_sim = st.slider("Rentabilidade Anual Estimada (%)", min_value=1.0, max_value=20.0, value=10.0, step=0.5)
+        taxa_anual_sim = st.slider("Rentabilidade Anual (%)", min_value=1.0, max_value=20.0, value=10.0, step=0.5)
     taxa_mensal = (1 + taxa_anual_sim / 100) ** (1 / 12) - 1
     meses_total = anos_sim * 12
     lista_projecao = []
@@ -1153,49 +1213,47 @@ with tab4:
     if lista_projecao:
         df_proj = pd.DataFrame(lista_projecao)
         col_res1, col_res2, col_res3 = st.columns(3)
-        col_res1.metric("Valor Total Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-        col_res2.metric("Total do Seu Bolso", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res1.metric("Valor Acumulado", f"+ R$ {montante_atual:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+        col_res2.metric("Total Investido", f"R$ {total_investido:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
         col_res3.metric("Rendimento", f"+ R$ {(montante_atual - total_investido):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
         st.divider()
-        fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial Projetada")
+        fig_invest = px.area(df_proj, x="Ano", y=["Patrimônio Total", "Total Investido"], title="Evolução Patrimonial")
         fig_invest.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3")
         st.plotly_chart(fig_invest, use_container_width=True)
 
 with tab5:
     st.subheader("📊 DRE Gerencial & Análise de Lucratividade")
-    st.markdown("Avalie seu **Lucro Operacional Líquido** e **Margem de Lucro** mensal.")
     receita_bruta = salario_a_input + vr_a_input
     custos_fixos_dre = total_fixos_a
     despesas_var_dre = total_gastos_variaveis
     lucro_operacional = receita_bruta - custos_fixos_dre - despesas_var_dre
     margem_lucro = (lucro_operacional / receita_bruta) * 100 if receita_bruta > 0 else 0.0
     col_dre1, col_dre2, col_dre3 = st.columns(3)
-    col_dre1.metric("Receita Bruta Total", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
-    col_dre2.metric("Lucro Líquido Operacional", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{margem_lucro:.1f}% Margem")
+    col_dre1.metric("Receita Bruta", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    col_dre2.metric("Lucro Operacional", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta=f"{margem_lucro:.1f}% Margem")
     reserva_acumulada_teorica = meta_reserva_efetiva * 6
     runway_meses = reserva_acumulada_teorica / total_fixos_a if total_fixos_a > 0 else 0
-    col_dre3.metric("Runway de Segurança", f"{runway_meses:.1f} Meses", delta="Cobertura de Caixa")
+    col_dre3.metric("Runway", f"{runway_meses:.1f} Meses", delta="Cobertura de Caixa")
     st.divider()
     dados_dre = [
         ["Conta / Indicador", "Valor (R$)", "% da Receita Bruta"],
         ["(+) Receita Bruta (Salário + VR)", f"+ R$ {receita_bruta:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), "100.0%"],
-        ["(-) Custos Fixos (Aluguel + Fixos)", f"- R$ {custos_fixos_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(custos_fixos_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
-        ["(-) Despesas Variáveis / Saídas", f"- R$ {despesas_var_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(despesas_var_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
-        ["(=) LUCRO LÍQUIDO OPERACIONAL", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{margem_lucro:.1f}%"]
+        ["(-) Custos Fixos", f"- R$ {custos_fixos_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(custos_fixos_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(-) Despesas Variáveis", f"- R$ {despesas_var_dre:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{(despesas_var_dre/receita_bruta)*100:.1f}%" if receita_bruta > 0 else "0.0%"],
+        ["(=) LUCRO LÍQUIDO", f"{'+' if lucro_operacional >=0 else '-'} R$ {abs(lucro_operacional):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), f"{margem_lucro:.1f}%"]
     ]
     df_dre_tabela = pd.DataFrame(dados_dre[1:], columns=dados_dre[0])
     st.table(df_dre_tabela)
-    st.markdown("#### 🔍 Diagnóstico de Oportunidade & Ladrões de Lucro")
+    st.markdown("#### 🔍 Diagnóstico de Ladrões de Lucro")
     if not df_variaveis.empty:
         df_cat_analise = df_variaveis.groupby("categoria")["valor"].sum().reset_index()
         maior_gasto = df_cat_analise.loc[df_cat_analise["valor"].idxmax()]
-        st.warning(f"⚠️ **Atenção ao maior ralo de caixa:** A categoria **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}** do seu orçamento variável.".replace('.', '#').replace(',', '.').replace('#', ','))
+        st.warning(f"⚠️ **Maior ralo de caixa:** **{maior_gasto['categoria']}** consumiu **R$ {maior_gasto['valor']:,.2f}**.".replace('.', '#').replace(',', '.').replace('#', ','))
     else:
-        st.success("🟢 Nenhuma distorção crítica identificada.")
+        st.success("🟢 Nenhuma distorção crítica.")
 
 with tab6:
     st.subheader("📑 Central de Relatórios em PDF")
-    st.markdown("Relatórios executivos com divisão entre **Gastos Fixos** e **Despesas Variáveis**.")
     pdf_bytes = gerar_relatorio_pdf(df_gastos_fixos, df_variaveis, salario_a_input, salario_b_input, aluguel_a, aluguel_b)
     st.download_button(label="📥 Baixar Relatório Completo em PDF", data=pdf_bytes,
                         file_name=f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.pdf",
@@ -1216,7 +1274,7 @@ with tab7:
     else:
         col_m3.success("🟢 Mês Aberto")
     st.divider()
-    with st.expander("💼 Definir Orçamento do Mês Selecionado", expanded=(orcamento_valor == 0.0)):
+    with st.expander("💼 Definir Orçamento do Mês", expanded=(orcamento_valor == 0.0)):
         novo_orc = st.number_input("Orçamento (R$)", min_value=0.0, value=orcamento_valor, step=50.0, key=f"orc_{mes_sel}_{ano_sel}")
         col_o1, col_o2 = st.columns(2)
         if col_o1.button("💾 Salvar Orçamento", use_container_width=True):
@@ -1228,14 +1286,14 @@ with tab7:
             prox_mes = 1 if mes_sel == 12 else mes_sel + 1
             prox_ano = ano_sel + 1 if mes_sel == 12 else ano_sel
             carregar_orcamento_mes(prox_mes, prox_ano)
-            st.success(f"Mês {meses_nomes[mes_sel-1]}/{ano_sel} fechado! Novo ciclo: {meses_nomes[prox_mes-1]}/{prox_ano}.")
+            st.success(f"Mês {meses_nomes[mes_sel-1]}/{ano_sel} fechado! Novo: {meses_nomes[prox_mes-1]}/{prox_ano}.")
             st.rerun()
     df_mes = carregar_despesas_por_mes(mes_sel, ano_sel)
     total_gasto_mes = df_mes["valor"].sum() if not df_mes.empty else 0.0
     saldo_mes = orcamento_valor - total_gasto_mes
     pct_uso = (total_gasto_mes / orcamento_valor * 100) if orcamento_valor > 0 else 0.0
     cm1, cm2, cm3, cm4 = st.columns(4)
-    cm1.metric("Orçamento do Mês", f"R$ {orcamento_valor:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
+    cm1.metric("Orçamento", f"R$ {orcamento_valor:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
     cm2.metric("Total Gasto", f"- R$ {total_gasto_mes:,.2f}".replace('.', '#').replace(',', '.').replace('#', ','))
     cm3.metric("Saldo Restante", f"{'+' if saldo_mes >= 0 else '-'} R$ {abs(saldo_mes):,.2f}".replace('.', '#').replace(',', '.').replace('#', ','), delta_color="normal" if saldo_mes >= 0 else "inverse")
     cm4.metric("% Utilizado", f"{pct_uso:.1f}%")
@@ -1244,7 +1302,7 @@ with tab7:
         if pct_uso >= 100:
             st.error(f"🚨 Orçamento estourado! Ultrapassou em R$ {abs(saldo_mes):,.2f}")
         elif pct_uso >= 80:
-            st.warning(f"⚠️ Atenção: {pct_uso:.1f}% do orçamento utilizado.")
+            st.warning(f"⚠️ {pct_uso:.1f}% do orçamento utilizado.")
         else:
             st.success(f"✅ Dentro do orçamento ({pct_uso:.1f}%).")
     st.divider()
@@ -1257,9 +1315,9 @@ with tab7:
             fig_cat.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3", showlegend=False)
             st.plotly_chart(fig_cat, use_container_width=True)
         else:
-            st.info("Sem despesas no mês selecionado.")
+            st.info("Sem despesas no mês.")
     with col_g2:
-        st.markdown("#### 📋 Detalhamento das Despesas")
+        st.markdown("#### 📋 Detalhamento")
         if not df_mes.empty:
             df_show = df_mes.copy()
             df_show["data"] = df_show["data"].dt.strftime("%d/%m/%Y")
@@ -1267,7 +1325,7 @@ with tab7:
             df_show.columns = ["Data", "Descrição", "Categoria", "Valor (R$)"]
             st.dataframe(df_show, use_container_width=True, hide_index=True)
         else:
-            st.info("Nenhuma despesa lançada neste mês.")
+            st.info("Nenhuma despesa neste mês.")
     st.divider()
     st.markdown("#### 📥 Exportar Relatório Mensal")
     pdf_mes = gerar_relatorio_mensal_pdf(mes_sel, ano_sel, df_mes, orcamento_valor)
@@ -1286,38 +1344,117 @@ with tab7:
         st.info("Nenhum mês registrado ainda.")
 
 # =============================================================================
-# ABA 8 — CORTES INTELIGENTES (13 AÇÕES)
+# ABA 8 — CORTES INTELIGENTES COM META DE POUPANÇA
 # =============================================================================
 with tab8:
     st.subheader("✂️ Cortes Inteligentes — Onde você deve economizar")
-    st.markdown("Análise automática com **explicação, simulador, impacto, evolução e plano de ação**.")
 
     receita_bruta_corte = salario_a_input + vr_a_input
     df_sug = analisar_cortes_inteligentes(df_variaveis, df_gastos_fixos, receita_bruta_corte,
                                            meta_reserva_mensal=meta_reserva_efetiva)
     df_cortes_concluidos = carregar_cortes_concluidos()
 
+    # =====================================================
+    # 🎯 META IDEAL DE POUPANÇA (NOVO)
+    # =====================================================
+    meta_poup = calcular_meta_poupanca_ideal(
+        receita_bruta_corte,
+        total_fixos_a,
+        total_gastos_variaveis,
+        meta_reserva_efetiva,
+        taxa_ideal=0.20
+    )
+
+    if meta_poup:
+        st.markdown("### 🎯 Meta Ideal de Poupança")
+        st.caption("Padrão financeiro recomendado: poupar **20% da renda bruta** por mês.")
+
+        mp1, mp2, mp3 = st.columns(3)
+        mp1.metric("Meta Ideal (R$/mês)", _fmt_brl(meta_poup["meta_ideal_valor"]),
+                    delta=f"{meta_poup['meta_ideal_pct']}% da renda")
+        mp2.metric("Poupança Atual (R$/mês)", _fmt_brl(meta_poup["poupanca_atual"]),
+                    delta=f"{meta_poup['poupanca_atual_pct']}% da renda")
+        falta_delta = f"-{meta_poup['falta_pct']}% abaixo do ideal" if meta_poup["falta_valor"] > 0 else "Meta atingida"
+        mp3.metric("Falta Poupar (R$/mês)", _fmt_brl(meta_poup["falta_valor"]),
+                    delta=falta_delta,
+                    delta_color="inverse" if meta_poup["falta_valor"] > 0 else "normal")
+
+        st.markdown(
+            f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
+            f"border-radius:12px;padding:16px 20px;margin:10px 0;'>"
+            f"<div style='display:flex;justify-content:space-between;'>"
+            f"<b style='color:{PALETA['texto_principal']};'>Progresso da Meta de Poupança</b>"
+            f"<span style='color:{meta_poup['status_cor']};font-weight:700;'>"
+            f"{meta_poup['status_emoji']} {meta_poup['status_txt']} — "
+            f"{int(meta_poup['progresso']*100)}%</span></div>"
+            f"<div style='color:{PALETA['texto_secundario']};font-size:12px;margin-top:6px;'>"
+            f"Você poupa hoje <b style='color:{PALETA['texto_principal']};'>{_fmt_brl(meta_poup['poupanca_atual'])}</b> "
+            f"({meta_poup['poupanca_atual_pct']}%) · "
+            f"Meta: <b style='color:{PALETA['texto_principal']};'>{_fmt_brl(meta_poup['meta_ideal_valor'])}</b> "
+            f"({meta_poup['meta_ideal_pct']}%) · "
+            f"Faltam: <b style='color:{meta_poup['status_cor']};'>{_fmt_brl(meta_poup['falta_valor'])}</b> "
+            f"({meta_poup['falta_pct']}%)</div></div>",
+            unsafe_allow_html=True
+        )
+        st.progress(meta_poup["progresso"])
+        st.divider()
+
     if df_sug.empty:
-        st.success("🟢 Excelente! Nenhuma categoria está acima do benchmark saudável.")
+        st.success("🟢 Nenhuma categoria está acima do benchmark saudável.")
     else:
         total_anual = df_sug["economia_potencial"].sum()
         total_mensal = df_sug["corte_sugerido"].sum()
         top_cat = df_sug.iloc[0]
 
         ck1, ck2, ck3 = st.columns(3)
-        ck1.metric("💸 Economia Mensal Potencial", _fmt_brl(total_mensal))
-        ck2.metric("💰 Economia Anual Projetada", _fmt_brl(total_anual))
+        ck1.metric("💸 Economia Mensal", _fmt_brl(total_mensal))
+        ck2.metric("💰 Economia Anual", _fmt_brl(total_anual))
         ck3.metric("🎯 Prioridade #1", top_cat["categoria"])
         st.divider()
 
-        st.markdown("### 🏆 Ranking de Prioridades de Corte")
-        st.caption("Expanda cada item para ver **explicação, simulador, impacto, evolução e matriz esforço × impacto**.")
+        # =====================================================
+        # 📊 TABELA: QUANTO REDUZIR POR CATEGORIA
+        # =====================================================
+        st.markdown("### 📊 Quanto reduzir em cada categoria (R$ e %)")
+        st.caption("Cada linha mostra o valor e o percentual exato a reduzir.")
 
+        df_por_cat = calcular_poupanca_por_categoria(df_sug, receita_bruta_corte)
+        if not df_por_cat.empty:
+            df_show = df_por_cat.copy()
+            for col in ["Gasto Atual (R$)", "Ideal (R$)", "Reduzir (R$)"]:
+                df_show[col] = df_show[col].apply(lambda v: _fmt_brl(v))
+            df_show["Reduzir (%)"]    = df_show["Reduzir (%)"].apply(lambda v: f"{v:.1f}%")
+            df_show["Peso Atual (%)"] = df_show["Peso Atual (%)"].apply(lambda v: f"{v:.1f}%")
+            df_show["Peso Ideal (%)"] = df_show["Peso Ideal (%)"].apply(lambda v: f"{v:.1f}%")
+            st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+            total_reduzir = df_por_cat["Reduzir (R$)"].sum()
+            total_reduzir_pct = (total_reduzir / receita_bruta_corte * 100) if receita_bruta_corte > 0 else 0
+            st.markdown(
+                f"<div style='background:{PALETA['fundo_card']};border-left:4px solid {PALETA['acento']};"
+                f"border-radius:10px;padding:14px 18px;margin-top:10px;'>"
+                f"<b style='color:{PALETA['texto_principal']};'>💡 Total a reduzir:</b> "
+                f"<b style='color:{PALETA['verde']};font-size:16px;'>{_fmt_brl(total_reduzir)}/mês</b> "
+                f"<span style='color:{PALETA['texto_secundario']};'>"
+                f"({total_reduzir_pct:.1f}% da renda) · {_fmt_brl(total_reduzir * 12)}/ano</span></div>",
+                unsafe_allow_html=True
+            )
+        st.divider()
+
+        # =====================================================
+        # 🏆 ANÁLISE DETALHADA POR CATEGORIA
+        # =====================================================
+        st.markdown("### 🏆 Análise Detalhada por Categoria")
         economia_max = df_sug["economia_potencial"].max()
 
         for _, s in df_sug.iterrows():
             cor = "#EF4444" if s["prioridade"] <= 2 else ("#F59E0B" if s["prioridade"] <= 4 else "#3B82F6")
             ja_concluido = s["categoria_limpa"] in df_cortes_concluidos['categoria'].tolist() if not df_cortes_concluidos.empty else False
+
+            valor_ideal = receita_bruta_corte * s['benchmark_saudavel'] / 100
+            reduzir_valor = max(0.0, s['valor_atual'] - valor_ideal)
+            reduzir_pct = (reduzir_valor / s['valor_atual'] * 100) if s['valor_atual'] > 0 else 0
+
             status_badge = " ✅ <span style='color:#22C55E;'>já concluído</span>" if ja_concluido else ""
 
             card_html = f"""
@@ -1334,14 +1471,14 @@ with tab8:
             </span>
         </div>
         <div style="color:{PALETA['verde']}; font-weight:700; font-size:15px;">
-            Economia anual: {_fmt_brl(s['economia_potencial'])}
+            Reduzir: {_fmt_brl(reduzir_valor)} ({reduzir_pct:.1f}%)
         </div>
     </div>
     <div style="color:{PALETA['texto_secundario']}; font-size:12px; margin-top:6px;">
-        Valor atual: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['valor_atual'])}</b>
+        Atual: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['valor_atual'])}</b>
+        &nbsp;→&nbsp; Ideal: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(valor_ideal)}</b>
         &nbsp;|&nbsp; Peso: <b style="color:{cor};">{s['peso_receita']}%</b>
-        &nbsp;|&nbsp; Benchmark: {s['benchmark_saudavel']}%
-        &nbsp;|&nbsp; Corte sugerido: <b style="color:{PALETA['texto_principal']};">{_fmt_brl(s['corte_sugerido'])}/mês</b>
+        (benchmark: {s['benchmark_saudavel']}%)
     </div>
 </div>
 """
@@ -1352,6 +1489,16 @@ with tab8:
                     f"<div style='background:{PALETA['fundo_sidebar']};border:1px solid {PALETA['borda']};"
                     f"border-radius:10px;padding:16px 20px;color:{PALETA['texto_principal']};"
                     f"font-size:13px;line-height:1.6;margin-bottom:14px;'>{s['explicacao']}</div>",
+                    unsafe_allow_html=True
+                )
+
+                st.markdown(
+                    f"<div style='background:{PALETA['fundo_sidebar']};border-left:3px solid {PALETA['verde']};"
+                    f"border-radius:8px;padding:12px 16px;margin-bottom:14px;'>"
+                    f"<b style='color:{PALETA['verde']};'>💰 Meta direta:</b> "
+                    f"<b style='color:{PALETA['texto_principal']};'>{_fmt_brl(reduzir_valor)}/mês</b> "
+                    f"<span style='color:{PALETA['texto_secundario']};'>= <b>{reduzir_pct:.1f}%</b> de redução · "
+                    f"<b>{_fmt_brl(reduzir_valor*12)}/ano</b></span></div>",
                     unsafe_allow_html=True
                 )
 
@@ -1366,13 +1513,10 @@ with tab8:
                 )
 
                 horas = calcular_custo_hora(s['valor_atual'], salario_a_input)
-                valor_str = f"{s['valor_atual']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                sal_str = f"{salario_a_input:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 st.markdown(
                     f"<div style='background:{PALETA['fundo_sidebar']};border:1px solid {PALETA['borda']};"
                     f"border-radius:8px;padding:12px 16px;margin-bottom:14px;color:{PALETA['texto_principal']};'>"
-                    f"⏱️ <b>Tradução em horas de trabalho:</b> você gasta <b>{horas}h</b> do seu mês "
-                    f"em '{s['categoria_limpa']}' (base: R$ {sal_str} ÷ 176h).</div>",
+                    f"⏱️ <b>Horas de trabalho:</b> você gasta <b>{horas}h</b> em '{s['categoria_limpa']}'.</div>",
                     unsafe_allow_html=True
                 )
 
@@ -1380,7 +1524,8 @@ with tab8:
                 col_sim = st.columns([2, 3])
                 with col_sim[0]:
                     pct_sim = st.slider("Percentual de corte", min_value=5, max_value=80,
-                                         value=30, step=5, key=f"slider_{s['categoria_limpa']}")
+                                         value=int(reduzir_pct) if reduzir_pct >= 5 else 30,
+                                         step=5, key=f"slider_{s['categoria_limpa']}")
                 sim = simular_corte(s['valor_atual'], pct_sim)
                 with col_sim[1]:
                     st.markdown(
@@ -1395,8 +1540,8 @@ with tab8:
                     st.markdown(
                         f"<div style='background:{PALETA['fundo_sidebar']};border-left:3px solid {PALETA['acento']};"
                         f"border-radius:8px;padding:12px 16px;margin-top:10px;color:{PALETA['texto_principal']};'>"
-                        f"🛡️ <b>Impacto na sua reserva:</b> +<b>{impacto['meses_extra_por_ano']}</b> meses de runway/ano · "
-                        f"equivale a <b>{impacto['pct_meta_reserva']}%</b> da sua meta mensal.</div>",
+                        f"🛡️ <b>Impacto na reserva:</b> +<b>{impacto['meses_extra_por_ano']}</b> meses de runway/ano · "
+                        f"<b>{impacto['pct_meta_reserva']}%</b> da meta mensal.</div>",
                         unsafe_allow_html=True
                     )
 
@@ -1404,16 +1549,14 @@ with tab8:
                 st.markdown(
                     f"<div style='background:{PALETA['fundo_sidebar']};border-left:3px solid {PALETA['roxo']};"
                     f"border-radius:8px;padding:12px 16px;margin-top:10px;color:{PALETA['texto_principal']};'>"
-                    f"📈 <b>Se investir essa economia a 10% a.a.:</b><br>"
-                    f"1 ano: <b>{_fmt_brl(proj['1_ano'])}</b> · 5 anos: <b>{_fmt_brl(proj['5_anos'])}</b> · "
-                    f"10 anos: <b>{_fmt_brl(proj['10_anos'])}</b> · "
-                    f"20 anos: <b style='color:{PALETA['verde']};'>{_fmt_brl(proj['20_anos'])}</b></div>",
+                    f"📈 <b>Investindo a 10% a.a.:</b> 1a: <b>{_fmt_brl(proj['1_ano'])}</b> · "
+                    f"5a: <b>{_fmt_brl(proj['5_anos'])}</b> · 10a: <b>{_fmt_brl(proj['10_anos'])}</b> · "
+                    f"20a: <b style='color:{PALETA['verde']};'>{_fmt_brl(proj['20_anos'])}</b></div>",
                     unsafe_allow_html=True
                 )
 
                 evolucao = evolucao_mensal_categoria(s['categoria_limpa'], df_variaveis, meses=6)
                 if not evolucao.empty and len(evolucao) >= 2:
-                    st.markdown("##### 📊 Evolução mensal")
                     fig_evo = px.line(evolucao, x="mes_ano", y="valor", markers=True,
                                        color_discrete_sequence=[PALETA['acento']])
                     fig_evo.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23",
@@ -1423,17 +1566,17 @@ with tab8:
 
                 retro = detectar_retrocesso(s['categoria_limpa'], df_variaveis)
                 if retro:
-                    st.warning(f"⚠️ **Alerta de retrocesso:** '{s['categoria_limpa']}' subiu {retro['variacao']}% em relação ao mês anterior ({_fmt_brl(retro['anterior'])} → {_fmt_brl(retro['atual'])}).")
+                    st.warning(f"⚠️ '{s['categoria_limpa']}' subiu {retro['variacao']}% vs mês anterior ({_fmt_brl(retro['anterior'])} → {_fmt_brl(retro['atual'])}).")
 
                 st.markdown("---")
                 if ja_concluido:
-                    st.success("✅ Este corte já foi marcado como concluído.")
+                    st.success("✅ Corte já marcado.")
                 else:
-                    if st.button(f"✅ Marcar '{s['categoria_limpa']}' como corte concluído",
+                    if st.button(f"✅ Marcar '{s['categoria_limpa']}' como concluído",
                                  key=f"btn_concl_{s['categoria_limpa']}", use_container_width=True):
                         hoje_ = datetime.now()
-                        marcar_corte_concluido(s['categoria_limpa'], sim['economia_mensal'], hoje_.month, hoje_.year)
-                        st.success("Corte registrado com sucesso!")
+                        marcar_corte_concluido(s['categoria_limpa'], reduzir_valor, hoje_.month, hoje_.year)
+                        st.success("Corte registrado!")
                         st.rerun()
 
         st.divider()
@@ -1456,56 +1599,54 @@ with tab8:
                     f"<div style='background:{PALETA['fundo_card']};border:1px solid {PALETA['borda']};"
                     f"border-radius:10px;padding:14px 18px;margin-bottom:8px;'>"
                     f"<div style='display:flex;justify-content:space-between;'>"
-                    f"<b style='color:{PALETA['texto_principal']};'>🎯 {meta['categoria']} (meta: -{meta['meta_reducao_pct']}%)</b>"
+                    f"<b style='color:{PALETA['texto_principal']};'>🎯 {meta['categoria']} (-{meta['meta_reducao_pct']}%)</b>"
                     f"<span style='color:{cor_prog};font-weight:600;'>{label} — {int(pct*100)}%</span></div>"
                     f"<div style='color:{PALETA['texto_secundario']};font-size:12px;margin-top:4px;'>"
-                    f"Média histórica: {_fmt_brl(prog['media_passado'])} · Atual: <b style='color:{PALETA['texto_principal']};'>{_fmt_brl(prog['atual'])}</b> · "
-                    f"Alvo: {_fmt_brl(prog['alvo'])} · Economia real: <b style='color:{PALETA['verde']};'>{_fmt_brl(prog['economia_atual'])}</b>"
+                    f"Média: {_fmt_brl(prog['media_passado'])} · Atual: <b style='color:{PALETA['texto_principal']};'>{_fmt_brl(prog['atual'])}</b> · "
+                    f"Alvo: {_fmt_brl(prog['alvo'])} · Economia: <b style='color:{PALETA['verde']};'>{_fmt_brl(prog['economia_atual'])}</b>"
                     f"</div></div>", unsafe_allow_html=True
                 )
                 st.progress(pct)
             st.divider()
 
-        st.markdown("### 🔎 Assinaturas Recorrentes Detectadas")
+        st.markdown("### 🔎 Assinaturas Recorrentes")
         assinaturas = detectar_assinaturas(df_variaveis)
         if assinaturas.empty:
-            st.info("Nenhuma assinatura recorrente detectada ainda.")
+            st.info("Nenhuma assinatura detectada.")
         else:
             total_ass_anual = assinaturas["total_anual"].sum()
-            st.warning(f"💡 **Potencial de corte:** {_fmt_brl(total_ass_anual)}/ano ({_fmt_brl(total_ass_anual/12)}/mês) se cancelar tudo que não usa.")
+            st.warning(f"💡 **Potencial:** {_fmt_brl(total_ass_anual)}/ano ({_fmt_brl(total_ass_anual/12)}/mês).")
             st.dataframe(assinaturas, use_container_width=True, hide_index=True)
         st.divider()
 
         st.markdown("### 👻 Gastos Invisíveis")
         invisiveis = detectar_gastos_invisiveis(df_variaveis, limite_valor=60)
         if invisiveis.empty:
-            st.info("Nenhum gasto invisível relevante detectado.")
+            st.info("Nenhum gasto invisível detectado.")
         else:
             total_inv_anual = invisiveis["total_anual"].sum()
-            st.warning(f"💡 Pequenos gastos somam {_fmt_brl(total_inv_anual)}/ano ({_fmt_brl(total_inv_anual/12)}/mês). Corte fácil e impactante.")
+            st.warning(f"💡 Pequenos gastos somam {_fmt_brl(total_inv_anual)}/ano ({_fmt_brl(total_inv_anual/12)}/mês).")
             st.dataframe(invisiveis, use_container_width=True, hide_index=True)
         st.divider()
 
         st.markdown("### 📋 Checklist de Ações da Semana")
         hoje_sem = datetime.now()
         semana_str = f"{hoje_sem.year}-W{hoje_sem.isocalendar()[1]:02d}"
-
-        if st.button("🔄 Gerar checklist desta semana", use_container_width=False):
+        if st.button("🔄 Gerar checklist desta semana", key="btn_checklist_final"):
             tarefas = gerar_checklist_semanal(df_sug, df_cortes_concluidos)
             if tarefas:
                 salvar_checklist_semanal(tarefas, semana_str)
-                st.success(f"Checklist da semana {semana_str} criado com {len(tarefas)} tarefas!")
+                st.success(f"Checklist criado com {len(tarefas)} tarefas!")
                 st.rerun()
             else:
-                st.info("Todas as sugestões já foram marcadas como concluídas. 🎉")
-
+                st.info("Todas as sugestões já foram concluídas. 🎉")
         df_checklist = carregar_checklist_semana(semana_str)
         if not df_checklist.empty:
             concluidas = df_checklist[df_checklist['concluida'] == True]
             total = len(df_checklist)
             pct_concluido = len(concluidas) / total if total > 0 else 0
             st.progress(pct_concluido)
-            st.markdown(f"**Progresso da semana:** {len(concluidas)}/{total} tarefas (**{pct_concluido*100:.0f}%**)")
+            st.markdown(f"**Progresso:** {len(concluidas)}/{total} tarefas (**{pct_concluido*100:.0f}%**)")
             for _, t in df_checklist.iterrows():
                 c1, c2, c3 = st.columns([0.5, 4, 1.5])
                 with c1:
@@ -1518,17 +1659,14 @@ with tab8:
                 if marcada != bool(t['concluida']):
                     marcar_item_checklist(t['id'], marcada)
                     st.rerun()
-        else:
-            st.info("Clique em **Gerar checklist desta semana** para criar as tarefas.")
         st.divider()
 
         st.markdown("### 📈 Projeção de Economia Acumulada")
         col_h1, col_h2 = st.columns([1, 1])
         with col_h1:
-            horizonte = st.slider("Horizonte (meses)", 6, 36, 24, 6, key="horizonte_proj")
+            horizonte = st.slider("Horizonte (meses)", 6, 36, 24, 6, key="horizonte_proj_f")
         with col_h2:
-            redirecionar = st.checkbox("Reinvestir a 10% a.a.", value=False, key="reinvestir_proj")
-
+            redirecionar = st.checkbox("Reinvestir a 10% a.a.", value=False, key="reinves_proj_f")
         lista_eixo = list(range(1, horizonte + 1))
         economia_acumulada = []
         valor_total = 0.0
@@ -1543,7 +1681,6 @@ with tab8:
             for m in lista_eixo:
                 economia_acumulada.append(total_mensal * m)
             valor_total = total_mensal * horizonte
-
         df_proj_eco = pd.DataFrame({"Mês": lista_eixo, "Economia Acumulada": economia_acumulada})
         fig_proj_eco = px.area(df_proj_eco, x="Mês", y="Economia Acumulada",
                                 title=f"Economia acumulada em {horizonte} meses")
@@ -1551,32 +1688,31 @@ with tab8:
         fig_proj_eco.update_layout(paper_bgcolor="#151B23", plot_bgcolor="#151B23", font_color="#E6EDF3", showlegend=False)
         st.plotly_chart(fig_proj_eco, use_container_width=True)
         col_k1, col_k2 = st.columns(2)
-        col_k1.metric("💰 Total no período", _fmt_brl(valor_total))
+        col_k1.metric("💰 Total", _fmt_brl(valor_total))
         col_k2.metric("📅 Média mensal", _fmt_brl(valor_total / horizonte))
         st.divider()
 
         st.markdown("### 📄 Exportar Plano de Corte")
         pdf_corte = gerar_pdf_plano_corte(df_sug, receita_bruta_corte, total_mensal, total_anual)
-        st.download_button("📥 Baixar Plano de Cortes em PDF", data=pdf_corte,
+        st.download_button("📥 Baixar PDF do Plano", data=pdf_corte,
                             file_name=f"Plano_Cortes_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                            mime="application/pdf", use_container_width=True, key="dl_plano_corte_final")
+                            mime="application/pdf", use_container_width=True, key="dl_pdf_final")
         st.divider()
 
         st.markdown("### 🎯 Definir Metas de Corte")
-        with st.form("form_meta_corte_final", clear_on_submit=True):
+        with st.form("form_meta_final", clear_on_submit=True):
             fm1, fm2 = st.columns([3, 2])
-            cat_escolhida = fm1.selectbox("Categoria", options=df_sug["categoria"].tolist(), key="cat_meta_final")
-            meta_pct = fm2.number_input("Meta de redução (%)", 1.0, 100.0, 20.0, 5.0, key="pct_meta_final")
+            cat_escolhida = fm1.selectbox("Categoria", options=df_sug["categoria"].tolist(), key="cat_mf")
+            meta_pct = fm2.number_input("Meta de redução (%)", 1.0, 100.0, 20.0, 5.0, key="pct_mf")
             if st.form_submit_button("💾 Salvar Meta"):
                 cat_limpa = cat_escolhida.split(" ", 1)[-1]
                 salvar_meta_corte(cat_limpa, meta_pct)
-                st.success(f"Meta salva para **{cat_limpa}**!")
+                st.success(f"Meta salva!")
                 st.rerun()
-
-        if st.button("📥 Salvar Análise Atual no Histórico", use_container_width=True, key="salvar_hist_final"):
+        if st.button("📥 Salvar Análise no Histórico", use_container_width=True, key="salv_hist_f"):
             hoje_an = datetime.now()
             salvar_analise_corte(hoje_an.month, hoje_an.year, df_sug.to_dict("records"))
-            st.success("Análise salva no histórico!")
+            st.success("Análise salva!")
 
     st.divider()
 
@@ -1584,20 +1720,19 @@ with tab8:
     df_cc = carregar_cortes_concluidos()
     if not df_cc.empty:
         total_economia = df_cc['valor_economia'].sum()
-        st.success(f"🎉 Você já economizou **{_fmt_brl(total_economia)}/mês** (**{_fmt_brl(total_economia*12)}/ano**) com cortes concluídos!")
+        st.success(f"🎉 Você já economizou **{_fmt_brl(total_economia)}/mês** (**{_fmt_brl(total_economia*12)}/ano**)!")
         df_cc_show = df_cc[["categoria", "valor_economia", "mes", "ano", "concluido_em"]].copy()
         df_cc_show["mes"] = df_cc_show["mes"].apply(lambda x: meses_nomes[int(x)-1] if 1 <= int(x) <= 12 else x)
         df_cc_show.columns = ["Categoria", "Economia (R$/mês)", "Mês", "Ano", "Data"]
         st.dataframe(df_cc_show, use_container_width=True, hide_index=True)
-        st.markdown("##### Desfazer um corte:")
         cols_undo = st.columns(min(4, len(df_cc)))
         for i, (_, c) in enumerate(df_cc.iterrows()):
             with cols_undo[i % 4]:
-                if st.button(f"🗑️ {c['categoria']}", key=f"undo_{c['id']}"):
+                if st.button(f"🗑️ {c['categoria']}", key=f"undo_f_{c['id']}"):
                     remover_corte_concluido(c['id'])
                     st.rerun()
     else:
-        st.info("Nenhum corte marcado como concluído ainda.")
+        st.info("Nenhum corte marcado ainda.")
 
     st.divider()
     st.markdown("### 📜 Histórico de Análises Salvas")
